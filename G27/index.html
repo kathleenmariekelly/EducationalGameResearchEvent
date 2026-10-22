@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ORBITAL — Station Ops</title>
+<link rel="stylesheet" href="src/style.css" />
+</head>
+<body>
+<div id="stars"></div>
+
+<header class="topbar">
+  <div class="logo">◎ ORBITAL <span class="sub">Station Ops</span></div>
+  <button id="openTutorialBtn" class="tut-launch">📘 Orientation</button>
+  <button id="deckBtn" class="tut-launch">🗺 Deck</button>
+  <div class="hud">
+    <div class="stat"><span class="label">CREDITS</span><span id="credits" class="value">0</span></div>
+    <div class="stat"><span class="label">RANK</span><span id="rank" class="value">Cadet</span></div>
+    <div class="stat"><span class="label">TOOLS</span><span id="toolCount" class="value">1</span></div>
+  </div>
+</header>
+
+<main class="stage">
+
+<!-- ============ SHIP DECK (home / navigation view) ============ -->
+<section id="shipView" class="ship-view">
+  <div class="ship-topline">
+    <h2 class="ship-title">Orbital Station — Deck Map</h2>
+    <p class="ship-sub">Move with <b>WASD</b> / <b>Arrow keys</b> · approach a console and press <b>E</b> (or click it) to start that operation.</p>
+  </div>
+  <div class="ship-main">
+    <div id="deck" class="deck"></div>
+    <aside id="shipStatus" class="ship-status"></aside>
+  </div>
+</section>
+
+<!-- ============ MISSION WORKSPACE (opened from a console) ============ -->
+<div id="missionView" class="layout hidden">
+  <!-- Mission list -->
+  <aside class="panel missions">
+    <h2>Missions</h2>
+    <div id="missionList"></div>
+    <div class="toolbox">
+      <h2>Unlocked Tools</h2>
+      <ul id="toolList"></ul>
+    </div>
+  </aside>
+
+  <!-- Mission workspace -->
+  <section class="panel workspace">
+    <div class="mission-head">
+      <button id="toShipBtn" class="ghost">◄ Return to Ship</button>
+      <h1 id="missionTitle">Select a mission</h1>
+      <div id="missionTags" class="tags"></div>
+    </div>
+    <p id="missionBrief" class="brief">Approach a console on the deck to begin an operation.</p>
+
+    <div id="missionExtras"></div>
+
+    <div id="targetBox" class="target-box hidden">
+      <span class="label">TARGET TIME</span>
+      <span id="targetBig" class="big-o">—</span>
+      <span id="targetSpaceWrap" class="target-space hidden"><span class="label">SPACE</span> <span id="targetSpace" class="big-o">—</span></span>
+      <span class="hint">Beat it to earn bonus credits & unlock tools.</span>
+    </div>
+
+    <div class="editor-wrap hidden" id="editorWrap">
+      <div class="editor-label">
+        <span id="fnSignature">solve()</span>
+        <button id="resetBtn" class="ghost">Reset</button>
+      </div>
+      <textarea id="code" spellcheck="false"></textarea>
+      <div class="actions">
+        <button id="runBtn" class="primary">▶ Run Tests</button>
+        <button id="submitBtn" class="success">⇧ Submit Solution</button>
+      </div>
+    </div>
+
+    <div id="results" class="results"></div>
+  </section>
+</div>
+
+</main>
+
+<div id="toast" class="toast hidden"></div>
+
+<!-- Academy Orientation (tutorial) overlay -->
+<div id="tutorialOverlay" class="tut-overlay hidden">
+  <div class="tut-modal">
+    <div class="tut-head">
+      <div class="tut-title">📘 Academy Orientation<span class="tut-sub">Algorithm Fundamentals</span></div>
+      <button id="tutClose" class="ghost">✕ Close</button>
+    </div>
+    <div class="tut-progress"><div id="tutBar" class="tut-bar"></div></div>
+    <div id="tutBody" class="tut-body"></div>
+    <div class="tut-foot">
+      <button id="tutBack" class="ghost">← Back</button>
+      <div id="tutDots" class="tut-dots"></div>
+      <button id="tutNext" class="primary">Next →</button>
+    </div>
+  </div>
+</div>
+
+<script src="src/missions.js"></script>
+<script src="src/missions-ops.js"></script>
+<script src="src/tutorial.js"></script>
+<script src="src/ship.js"></script>
+<script src="src/game.js"></script>
+</body>
+</html>

@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>City Explorer: Learn Graph Traversal</title>
+<style>
+  :root {
+    --bg: #10231e; --panel: #14342c; --panel2: #1c463b;
+    --ink: #eafff6; --muted: #9ec9ba; --accent: #ffcf5c;
+    --good: #5ee88a; --bad: #ff8a7a; --warn: #ffd166;
+    --node: #2a5a4c; --visited: #5ee88a; --frontier: #ffcf5c;
+    --current: #6ad0ff; --target: #ff7ce0;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    background: var(--bg); color: var(--ink); display: flex; flex-direction: column; min-height: 100vh;
+  }
+  header {
+    padding: 12px 20px; background: linear-gradient(90deg, #14342c, #1c463b);
+    border-bottom: 1px solid #2a5a4c; display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  }
+  header h1 { font-size: 19px; margin: 0; }
+  header .tag { color: var(--muted); font-size: 13px; }
+  .tabs { display: flex; gap: 6px; }
+  .spacer { margin-left: auto; }
+  button {
+    background: var(--panel2); color: var(--ink); border: 1px solid #2f6a58;
+    padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 14px;
+    transition: background .15s, transform .05s;
+  }
+  button:hover { background: #256052; }
+  button:active { transform: translateY(1px); }
+  button.pri { background: var(--accent); color: #2a1e00; border-color: var(--accent); font-weight: 600; }
+  button.tab.on { background: var(--accent); color: #2a1e00; border-color: var(--accent); font-weight: 600; }
+  main { display: grid; grid-template-columns: 1fr 340px; gap: 16px; padding: 16px 20px; flex: 1; align-items: start; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+  .stage {
+    background: var(--panel); border: 1px solid #2a5a4c; border-radius: 12px;
+    position: relative; overflow: hidden; height: 74vh; min-height: 460px;
+  }
+  canvas { display: block; width: 100%; height: 100%; }
+  .side { display: flex; flex-direction: column; gap: 14px; }
+  .card { background: var(--panel); border: 1px solid #2a5a4c; border-radius: 12px; padding: 14px; }
+  .card h2 { margin: 0 0 8px; font-size: 15px; }
+  .card h2 .pill { font-size: 11px; padding: 2px 8px; border-radius: 999px; background: var(--panel2); color: var(--muted); margin-left: 6px; }
+  .goal { font-size: 15px; line-height: 1.4; }
+  .goal .big { font-size: 18px; font-weight: 800; color: var(--target); }
+  .msg { padding: 10px 12px; border-radius: 8px; font-size: 14px; line-height: 1.4; background: #0c1f1a; border-left: 4px solid var(--accent); min-height: 20px; }
+  .msg.good { border-color: var(--good); } .msg.bad { border-color: var(--bad); } .msg.warn { border-color: var(--warn); }
+  .stat { color: var(--muted); font-size: 13px; } .stat b { color: var(--ink); }
+  .statgrid { display: flex; gap: 10px; text-align: center; }
+  .statgrid > div { flex: 1; background: #0c1f1a; border-radius: 8px; padding: 8px 4px; }
+  .statgrid .big { display: block; font-size: 22px; font-weight: 800; color: var(--accent); }
+  .statgrid .lbl { font-size: 11px; color: var(--muted); }
+  .scorepop { animation: sp .35s ease; }
+  @keyframes sp { 0% { transform: scale(1.4); color: var(--good); } 100% { transform: scale(1); } }
+  .controls { display: flex; gap: 8px; flex-wrap: wrap; }
+  .legend { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--muted); }
+  .legend .row { display: flex; align-items: center; gap: 8px; }
+  .dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid #0f1220; }
+  .timer { font-size: 30px; font-weight: 800; color: var(--accent); text-align: center; }
+  .timer.low { color: var(--bad); }
+  footer { padding: 8px 20px; color: var(--muted); font-size: 12px; text-align: center; }
+  .kbd { background: #0c1f1a; border: 1px solid #2f6a58; border-radius: 4px; padding: 1px 6px; font-size: 12px; }
+  .hidden { display: none !important; }
+  /* Banner overlay */
+  .banner {
+    position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 10px; background: rgba(8,16,14,0.85); z-index: 6; text-align: center; padding: 20px;
+    opacity: 0; pointer-events: none; transition: opacity .3s;
+  }
+  .banner.show { opacity: 1; pointer-events: auto; }
+  .banner h2 { font-size: 30px; margin: 0; color: var(--accent); }
+  .banner p { margin: 0; color: var(--ink); font-size: 16px; max-width: 420px; }
+  .banner .pts { font-size: 44px; font-weight: 800; color: var(--good); }
+  /* Instruction sheet modal */
+  .modal {
+    position: fixed; inset: 0; background: rgba(4,10,8,0.75); z-index: 20;
+    display: flex; align-items: center; justify-content: center; padding: 20px;
+    opacity: 0; pointer-events: none; transition: opacity .2s;
+  }
+  .modal.show { opacity: 1; pointer-events: auto; }
+  .sheet {
+    background: #16201d; border: 1px solid #2f6a58; border-radius: 14px; max-width: 560px; width: 100%;
+    padding: 22px; box-shadow: 0 20px 60px rgba(0,0,0,.5); max-height: 86vh; overflow: auto;
+  }
+  .sheet h2 { margin: 0 0 4px; color: var(--accent); }
+  .sheet .sub { color: var(--muted); margin: 0 0 14px; font-size: 14px; }
+  .sheet ol { margin: 0 0 14px; padding-left: 20px; line-height: 1.6; }
+  .sheet ol b { color: var(--current); }
+  .sheet .why { background: #0c1f1a; border-left: 4px solid var(--good); padding: 10px 12px; border-radius: 8px; font-size: 14px; }
+  .sheet .close { margin-top: 16px; display: flex; justify-content: flex-end; gap: 8px; }
+  .sheet pre { background: #0c1f1a; padding: 10px 12px; border-radius: 8px; overflow: auto; font-size: 13px; color: #cfeee0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🗺️ City Explorer</h1>
+  <div class="tabs">
+    <button class="tab on" id="tabPath">🎯 Shortest Route</button>
+    <button class="tab" id="tabExplore">🚶 Explore &amp; Find</button>
+  </div>
+  <div class="tabs" style="margin-left:6px;">
+    <button class="tab on" id="diffEasy">😌 Easy</button>
+    <button class="tab" id="diffHard">🔥 Hard</button>
+    <button class="tab" id="diffOut">💀 Outrageous</button>
+    <button class="tab" id="diffImp">☠️ Impossible</button>
+  </div>
+  <span class="tag" id="headTag">Discover the map and reach the target landmark</span>
+  <div class="spacer"></div>
+  <button class="pri" id="btnNew">🌆 New City</button>
+</header>
+
+<main>
+  <div class="stage">
+    <canvas id="cv"></canvas>
+    <div class="banner" id="banner">
+      <h2 id="bTitle">Done!</h2>
+      <div class="pts" id="bPts">+0</div>
+      <p id="bSub"></p>
+      <button class="pri" id="bNext">🌆 Play Again</button>
+    </div>
+  </div>
+
+  <div class="side">
+    <!-- Goal -->
+    <div class="card">
+      <h2>🎯 Objective</h2>
+      <div class="goal" id="goal">Loading…</div>
+    </div>
+
+    <!-- Message log -->
+    <div class="card">
+      <h2>Travel log</h2>
+      <div class="msg" id="msg">Click an adjacent place to travel there.</div>
+    </div>
+
+    <!-- Explore stats -->
+    <div class="card" id="cardExplore">
+      <h2>Journey</h2>
+      <div class="statgrid">
+        <div><span class="big" id="eSteps">0</span><span class="lbl">steps taken</span></div>
+        <div><span class="big" id="eBest">—</span><span class="lbl">shortest possible</span></div>
+        <div><span class="big" id="eScore">0</span><span class="lbl">score</span></div>
+      </div>
+    </div>
+
+    <!-- Path stats -->
+    <div class="card hidden" id="cardPath">
+      <h2>Route</h2>
+      <div class="timer" id="pTimer">20.0</div>
+      <button class="pri" id="btnStart" style="width:100%;margin:8px 0;">▶ Start Timer</button>
+      <div class="statgrid" style="margin-top:8px;">
+        <div><span class="big" id="pDist">0</span><span class="lbl">your distance</span></div>
+        <div><span class="big" id="pOpt">?</span><span class="lbl">best possible</span></div>
+        <div><span class="big" id="pScore">0</span><span class="lbl">score</span></div>
+      </div>
+    </div>
+
+    <!-- Instruction sheets -->
+    <div class="card">
+      <h2>📋 Instruction sheets</h2>
+      <div class="stat" style="margin-bottom:8px;">Consult a strategy, then try it on the map.</div>
+      <div class="controls" id="sheetButtons"></div>
+    </div>
+
+    <!-- Controls -->
+    <div class="card">
+      <h2>Controls</h2>
+      <div class="controls">
+        <button id="btnRestart">↺ Restart (same map)</button>
+        <button id="btnReset">🔀 New Roads</button>
+        <button id="btnDemo">👻 Demonstrate</button>
+      </div>
+    </div>
+
+    <!-- Score / records -->
+    <div class="card">
+      <h2>🏆 Records</h2>
+      <div class="stat">Best Explore score <b id="rExplore">0</b></div>
+      <div class="stat">Best Route score <b id="rPath">0</b></div>
+      <div class="stat">Trips completed <b id="rTrips">0</b></div>
+    </div>
+
+    <!-- Legend -->
+    <div class="card">
+      <h2>Legend</h2>
+      <div class="legend" id="legend"></div>
+    </div>
+  </div>
+</main>
+
+<footer>Tip: In <b>Explore &amp; Find</b>, places show as <b>?</b> until you visit them — follow the roads to reveal names and find your target. Use the <b>BFS</b> and <b>DFS</b> sheets to learn efficient search. In <b>Shortest Route</b>, roads have distances — reach the target with the least total distance before time runs out. Roads glowing gold connect to where you're standing. Press <span class="kbd">H</span> for a hint.</footer>
+
+<!-- Instruction sheet modal -->
+<div class="modal" id="modal">
+  <div class="sheet" id="sheetBody"></div>
+</div>
+
+<script>
+"use strict";
+
+// ============================================================
+//  City Explorer — two modes:
+//   'explore' : fog-of-war graph, travel freely, learn BFS/DFS
+//   'path'    : timed weighted shortest-route challenge (Dijkstra)
+// ============================================================
+
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+let DPR = window.devicePixelRatio || 1;
+
+let gameMode = 'path';   // 'explore' | 'path'
+let difficulty = 'easy';    // 'easy' | 'hard' | 'outrageous' | 'impossible'
+
+// ---------- City data (photos + themed landmarks) ----------
+const CITIES = [
+  { name: 'New York', img: 'images/newyork.jpg', hotel: ['🏨','Midtown Hotel'],
+    sky: ['#1b2a4a','#f5a25d'], skyline: '#0d1526',
+    landmarks: [['🗽','Statue of Liberty'],['🌉','Brooklyn Bridge'],['🏙️','Times Square'],
+      ['🌳','Central Park'],['🏢','Empire State'],['🏛️','The Met'],
+      ['🔔','Wall Street'],['🎭','Broadway'],['🚖','Yellow Cab Sq.'],
+      ['🚉','Grand Central'],['🏀','MSG Arena'],['🎆','Coney Island']] },
+  { name: 'Paris', img: 'images/paris.jpg', hotel: ['🏨','Hôtel de Ville'],
+    sky: ['#2a2350','#e8b4c8'], skyline: '#141024',
+    landmarks: [['🗼','Eiffel Tower'],['⛪','Notre-Dame'],['🖼️','The Louvre'],
+      ['🎨','Montmartre'],['🏛️','Panthéon'],['⛲','Versailles'],
+      ['🍰','Champs-Élysées'],['🌉','Pont Neuf'],['🗿','Arc de Triomphe'],
+      ['🥖','Le Marais'],['🚇','Métro Cité'],['🎠','Tuileries']] },
+  { name: 'Saint Petersburg', img: 'images/stpetersburg.jpg', hotel: ['🏨','Nevsky Hotel'],
+    sky: ['#123049','#7fd0e0'], skyline: '#0a1b2a',
+    landmarks: [['⛪','Savior on Blood'],['🏛️','The Hermitage'],['⛲','Peterhof'],
+      ['🎭','Mariinsky'],['🌉','Palace Bridge'],['⛵','Neva River'],
+      ['🏰','Winter Palace'],['🗿','Bronze Horseman'],['⛪','St. Isaac’s'],
+      ['🚢','Aurora Cruiser'],['🎼','Philharmonia'],['🏛️','Kazan']] },
+  { name: 'London', img: 'images/london.jpg', hotel: ['🏨','Thames Hotel'],
+    sky: ['#243447','#c9a24d'], skyline: '#101922',
+    landmarks: [['🎡','London Eye'],['🕐','Big Ben'],['🌉','Tower Bridge'],
+      ['🏰','Tower of London'],['⛪','St Paul’s'],['🏛️','British Museum'],
+      ['🌳','Hyde Park'],['🎭','West End'],['🔔','Westminster'],
+      ['🚇','Underground'],['🎢','Camden Town'],['🏟️','Wembley']] },
+  { name: 'Rome', img: 'images/rome.jpg', hotel: ['🏨','Roma Hotel'],
+    sky: ['#3a2418','#f0a860'], skyline: '#1a0f08',
+    landmarks: [['🏟️','Colosseum'],['⛲','Trevi Fountain'],['🏛️','Pantheon'],
+      ['⛪','St Peter’s'],['🗿','Roman Forum'],['🎨','Vatican Museums'],
+      ['🪜','Spanish Steps'],['🌳','Villa Borghese'],['🏰','Castel S.Angelo'],
+      ['🕍','Great Synagogue'],['🏞️','Tiber Island'],['🎪','Circus Maximus']] }
+];
+let city = CITIES[0];
+
+// preload photos
+const cityImg = {};
+CITIES.forEach(c => { const im = new Image(); im.onload = () => { im._ready = true; render(); }; im.src = c.img; cityImg[c.name] = im; });
+
+// ---------- Graph model ----------
+let nodes = [];   // {id,x,y,icon,name}
+let adj = [];     // adj[i] = [{to, w}]  (w = road distance)
+let startId = 0, targetId = 0;
+
+// ---------- Shared runtime state ----------
+let pos = 0;                 // player's current node
+let visited = new Set();     // nodes the player has traveled to (revealed)
+let steps = 0;
+let score = 0;
+let finished = false;
+let flashSet = new Map();
+let demoActive = false;
+
+// explore-specific
+let exploreOptimal = 0;      // BFS shortest edges start->target
+
+// path-specific
+let pathDist = 0;            // total distance walked
+let pathOptimal = 0;         // Dijkstra optimal
+let timeLeft = 0;            // seconds
+let pathTimer = null;
+let pathStarted = false;     // player has pressed Start Timer
+function pathTime(){ return difficulty==='easy' ? 15 : difficulty==='hard' ? 20 : difficulty==='outrageous' ? 30 : 60; }  // seconds allowed
+
+// ---------- Persistent records ----------
+function lsGet(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }
+function lsSet(k,v){ try { localStorage.setItem(k,v); } catch(e){} }
+const store = {
+  bestExplore: +(lsGet('ce_bexplore') || 0),
+  bestPath: +(lsGet('ce_bpath') || 0),
+  trips: +(lsGet('ce_trips') || 0),
+};
+function saveStore() {
+  lsSet('ce_bexplore', store.bestExplore);
+  lsSet('ce_bpath', store.bestPath);
+  lsSet('ce_trips', store.trips);
+}
+function updateRecords() {
+  document.getElementById('rExplore').textContent = store.bestExplore;
+  document.getElementById('rPath').textContent = store.bestPath;
+  document.getElementById('rTrips').textContent = store.trips;
+}
+
+// ---------- Utils ----------
+function shuffle(a){ for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
+function dist(a,b){ return Math.hypot(nodes[a].x-nodes[b].x, nodes[a].y-nodes[b].y); }
+function neighbors(id){ return adj[id].map(e=>e.to); }
+function isAdjacent(a,b){ return adj[a].some(e=>e.to===b); }
+function edgeWeight(a,b){ const e=adj[a].find(e=>e.to===b); return e?e.w:Infinity; }
+
+// ---------- Graph generation (weighted, connected) ----------
+function makeGraph(opts) {
+  opts = opts || {};
+  stopTimer();
+  hideBanner();
+  const W = cv.clientWidth || 640, H = cv.clientHeight || 500;
+  if (!opts.keepCity){
+    // pick a DIFFERENT city than the current one when possible
+    let next = city;
+    while (CITIES.length > 1 && next === city) next = CITIES[Math.floor(Math.random()*CITIES.length)];
+    city = next;
+  }
+  buildSkyline();
+
+  const n = difficulty==='easy' ? 5 : difficulty==='hard' ? 10 : difficulty==='outrageous' ? 20 : 50; // Easy=5, Hard=10, Outrageous=20, Impossible=50
+  nodes = [];
+  // Positions are stored NORMALIZED (0..1) and converted to pixels on every
+  // render/click, so they always match the current canvas size (no off-view /
+  // misaligned-click bugs regardless of window size or device pixel ratio).
+  // Grid scales with node count so 20-node maps still fit and stay clickable.
+  const cols = Math.ceil(Math.sqrt(n*1.5)), rows = Math.ceil(n/cols);
+  const clamp = (v,lo,hi)=>Math.max(lo, Math.min(hi, v));
+  const slots = [];
+  for (let r=1;r<=rows;r++) for (let c=1;c<=cols;c++) slots.push({nx:c/(cols+1), ny:r/(rows+1)});
+  shuffle(slots);
+  const pool = shuffle(city.landmarks.slice());
+  for (let i=0;i<n;i++){
+    const s = slots[i], lm = pool[i%pool.length];
+    // keep names unique when the landmark pool wraps (20 nodes > 12 landmarks)
+    const suffix = i >= pool.length ? ' '+(Math.floor(i/pool.length)+1) : '';
+    const nx = clamp(s.nx + (Math.random()-0.5)*(1/(cols+1))*0.5, 0.06, 0.94);
+    const ny = clamp(s.ny + (Math.random()-0.5)*(1/(rows+1))*0.5, 0.10, 0.90);
+    nodes.push({ id:i, nx, ny, x:nx*W, y:ny*H, icon: lm[0], name: lm[1]+suffix });
+  }
+  layoutNodes();   // set pixel x,y from normalized coords for the current size
+
+  // connected weighted graph: spanning tree + extra edges
+  const sets = nodes.map(()=>new Map());
+  const addEdge = (a,b)=>{ const w = Math.max(1, Math.round(dist(a,b)/28)); sets[a].set(b,w); sets[b].set(a,w); };
+  const connected=[0], rest=shuffle([...Array(n).keys()].slice(1));
+  for (const v of rest){ const u = connected[Math.floor(Math.random()*connected.length)]; addEdge(u,v); connected.push(v); }
+  let extra = Math.round(n*0.4) + Math.floor(Math.random()*3), tries=0;
+  while (extra>0 && tries<200){ tries++;
+    const a=Math.floor(Math.random()*n), b=Math.floor(Math.random()*n);
+    if (a!==b && !sets[a].has(b) && dist(a,b) < Math.max(W,H)*0.5){ addEdge(a,b); extra--; }
+  }
+  adj = sets.map(m => [...m.entries()].map(([to,w])=>({to,w})).sort((x,y)=>x.to-y.to));
+
+  // choose start + a target that's a few hops away.
+  // Harder modes require the target further out to keep things interesting.
+  const minHops = (difficulty==='outrageous' || difficulty==='impossible') ? 3 : 2;
+  startId = Math.floor(Math.random()*n);
+  const d = bfsDistances(startId);
+  let far = [];
+  for (let i=0;i<n;i++) if (i!==startId && d[i]>=minHops) far.push(i);
+  // fall back to progressively closer targets if none are far enough
+  if (!far.length) for (let i=0;i<n;i++) if (i!==startId && d[i]>=2) far.push(i);
+  if (!far.length) far = [...Array(n).keys()].filter(i=>i!==startId);
+  targetId = far[Math.floor(Math.random()*far.length)];
+
+  nodes[startId].icon = city.hotel[0];
+  nodes[startId].name = city.hotel[1];
+
+  resetState();
+}
+
+// ---------- BFS/DFS/Dijkstra ----------
+function bfsDistances(src){
+  const d = nodes.map(()=>Infinity); d[src]=0;
+  const q=[src];
+  while(q.length){ const u=q.shift(); for(const {to} of adj[u]) if(d[to]===Infinity){ d[to]=d[u]+1; q.push(to);} }
+  return d;
+}
+// BFS visiting order + parent (for path reconstruction)
+function bfsSearch(src, goal){
+  const vis=new Set([src]), order=[src], par={};
+  const q=[src];
+  while(q.length){ const u=q.shift(); if(u===goal) break;
+    for(const {to} of adj[u]) if(!vis.has(to)){ vis.add(to); par[to]=u; order.push(to); q.push(to);} }
+  return { order, par };
+}
+function dfsSearch(src, goal){
+  const vis=new Set(), order=[], par={};
+  (function go(u,p){ if(vis.has(u)) return false; vis.add(u); order.push(u); if(p!==undefined) par[u]=p;
+    if(u===goal) return true;
+    for(const {to} of adj[u]) if(!vis.has(to)){ if(go(to,u)) return true; }
+    return false; })(src, undefined);
+  return { order, par };
+}
+function reconstruct(par, src, goal){
+  const path=[goal]; let c=goal;
+  while(c!==src){ if(par[c]===undefined) return null; c=par[c]; path.push(c); }
+  return path.reverse();
+}
+function dijkstra(src, goal){
+  const D = nodes.map(()=>Infinity); D[src]=0;
+  const done = new Set(); const par={};
+  while(done.size<nodes.length){
+    let u=-1,best=Infinity;
+    for(let i=0;i<nodes.length;i++) if(!done.has(i)&&D[i]<best){best=D[i];u=i;}
+    if(u===-1) break; done.add(u);
+    for(const {to,w} of adj[u]) if(D[u]+w<D[to]){ D[to]=D[u]+w; par[to]=u; }
+  }
+  return { dist: D[goal], path: reconstruct(par, src, goal) };
+}
+
+// ---------- Reset per round ----------
+function resetState(){
+  stopTimer();
+  hideBanner();
+  finished = false;
+  demoActive = false;
+  pos = startId;
+  visited = new Set([startId]);
+  steps = 0;
+  score = 0;
+  flashSet.clear();
+
+  if (gameMode === 'explore'){
+    exploreOptimal = bfsDistances(startId)[targetId];
+    setMsg('You\'re at <b>'+nm(startId)+'</b>. The <b>highlighted</b> places (gold rings/roads) are one road away — click one to travel. Places stay “?” until you visit them — search for your target!', '');
+  } else {
+    pathDist = 0;
+    pathOptimal = dijkstra(startId, targetId).dist;
+    timeLeft = pathTime();
+    pathStarted = false;
+    setMsg('Study the map and plan your route. Press <b>▶ Start Timer</b> when you’re ready — the clock only runs once you start.', 'warn');
+  }
+  syncUI();
+  render();
+}
+
+function startPathRound(){
+  if (gameMode !== 'path' || pathStarted || finished) return;
+  pathStarted = true;
+  startTimer();
+  setMsg('Go! Reach <b>'+nm(targetId)+'</b> with the least total road distance. Highlighted roads show where you can move.', 'good');
+  syncUI();
+  render();   // reveal the map
+}
+
+// ---------- Player travel ----------
+function travelTo(id){
+  if (finished || demoActive) return;
+  if (id === pos) return;
+  if (!isAdjacent(pos, id)){
+    flash(id);
+    setMsg('No direct road from <b>'+nmSafe(pos)+'</b> to there. You can only travel to an <b>adjacent</b> place (connected by a road).', 'bad');
+    return;
+  }
+  // in Route mode you must start the timer before moving
+  if (gameMode === 'path' && !pathStarted){
+    setMsg('Press <b>▶ Start Timer</b> first — then travel to build your route.', 'warn');
+    return;
+  }
+  // move
+  if (gameMode === 'path') pathDist += edgeWeight(pos, id);
+  pos = id;
+  visited.add(id);
+  steps++;
+
+  if (gameMode === 'explore'){
+    if (id === targetId){ winExplore(); return; }
+    setMsg('Traveled to <b>'+nm(id)+'</b>. '+(id===targetId?'':'Keep searching for <b>'+nm(targetId)+'</b>.'), 'good');
+  } else {
+    if (id === targetId){ winPath(); return; }
+    setMsg('At <b>'+nm(id)+'</b> — distance so far <b>'+pathDist+'</b>. Best possible is '+pathOptimal+'.', 'good');
+  }
+  syncUI();
+  render();
+}
+
+// ---------- Win handlers ----------
+function winExplore(){
+  finished = true;
+  const over = steps - exploreOptimal;
+  score = Math.max(10, 100 - over*15);
+  const perfect = over<=0;
+  if (score > store.bestExplore) store.bestExplore = score;
+  store.trips++; saveStore(); updateRecords();
+  syncUI(); render();
+  setMsg('🎉 Found <b>'+nm(targetId)+'</b> in '+steps+' steps!', 'good');
+  showBanner(perfect ? 'Optimal Route! 🏅' : 'Landmark Found! 🎉', score,
+    'You reached it in <b>'+steps+'</b> steps. The shortest possible was <b>'+exploreOptimal+'</b>. '+
+    (perfect ? 'You matched BFS — the fewest-roads path!' : 'BFS would have found it in '+exploreOptimal+' steps — check the instruction sheet!'));
+}
+function winPath(){
+  finished = true;
+  stopTimer();
+  const ratio = pathOptimal / pathDist;         // <=1
+  const timeBonus = Math.round(timeLeft*2);
+  score = Math.round(200*ratio) + timeBonus;
+  const perfect = pathDist <= pathOptimal;
+  if (score > store.bestPath) store.bestPath = score;
+  store.trips++; saveStore(); updateRecords();
+  syncUI(); render();
+  showBanner(perfect ? 'Shortest Route! 🏅' : 'Arrived! 🎯', score,
+    'Your distance <b>'+pathDist+'</b> · best possible <b>'+pathOptimal+'</b> · time bonus <b>+'+timeBonus+'</b>. '+
+    (perfect ? 'Perfect — you found the true shortest route (Dijkstra)!' : 'A shorter route existed — see the Shortest-Route sheet.'));
+}
+function failPath(){
+  finished = true; stopTimer(); syncUI(); render();
+  showBanner('Out of time! ⏰', 0, 'You didn\'t reach <b>'+nm(targetId)+'</b> in time. Try planning a shorter route.');
+}
+
+// ---------- Timer ----------
+function startTimer(){
+  stopTimer();
+  pathTimer = setInterval(()=>{
+    timeLeft -= 0.1;
+    if (timeLeft <= 0){ timeLeft = 0; updateTimer(); failPath(); return; }
+    updateTimer();
+  }, 100);
+  updateTimer();
+}
+function stopTimer(){ if(pathTimer){ clearInterval(pathTimer); pathTimer=null; } }
+function updateTimer(){
+  const t = document.getElementById('pTimer');
+  t.textContent = timeLeft.toFixed(1);
+  t.classList.toggle('low', timeLeft <= 10);
+}
+
+// ---------- Demonstrate (ghost runs the algorithm) ----------
+let currentSheet = 'BFS';   // which algo the demonstrate button runs (explore)
+function demonstrate(){
+  if (demoActive) return;
+  if (gameMode === 'path'){
+    if (!pathStarted){ setMsg('Press <b>▶ Start Timer</b> first — then I can show the best route.', 'warn'); return; }
+    const {path} = dijkstra(startId, targetId);
+    animatePath(path, 'Dijkstra picks the least-distance route ('+pathOptimal+').');
+    return;
+  }
+  const res = currentSheet==='BFS' ? bfsSearch(startId, targetId) : dfsSearch(startId, targetId);
+  const path = reconstruct(res.par, startId, targetId) || [startId];
+  animateOrder(res.order, path, currentSheet);
+}
+function endDemo(){ demoActive=false; demoVisit=new Set(); demoPath=null; render(); }
+function animateOrder(order, path, label){
+  demoActive = true;
+  setMsg('👻 Demonstrating <b>'+label+'</b>: watch the order places are checked.', 'warn');
+  let i=0; demoVisit = new Set(); demoPath = null;
+  const iv = setInterval(()=>{
+    try {
+      if (i>=order.length){ clearInterval(iv); demoPath = path;
+        setMsg('👻 '+label+' checked '+order.length+' places; the highlighted route ('+Math.max(0,path.length-1)+' steps) reaches the target.', 'warn');
+        render(); setTimeout(endDemo, 2200); return; }
+      demoVisit.add(order[i]); i++; render();
+    } catch(e){ clearInterval(iv); endDemo(); }
+  }, 360);
+}
+function animatePath(path, label){
+  path = path || [startId];
+  demoActive = true; demoPath = null; demoVisit = new Set();
+  setMsg('👻 '+label, 'warn');
+  let i=0;
+  const iv = setInterval(()=>{
+    try {
+      if (i>=path.length){ clearInterval(iv); demoPath = path; render();
+        setTimeout(endDemo, 2200); return; }
+      demoVisit.add(path[i]); i++; render();
+    } catch(e){ clearInterval(iv); endDemo(); }
+  }, 450);
+}
+let demoVisit = new Set(), demoPath = null;
+
+// ---------- Hint ----------
+function hint(){
+  if (finished){ setMsg('Round complete!', 'warn'); return; }
+  if (gameMode === 'explore'){
+    const {par} = bfsSearch(pos, targetId);
+    const path = reconstruct(par, pos, targetId);
+    if (path && path.length>1){ flash(path[1]);
+      setMsg('Hint (BFS): the fewest-roads path goes toward <b>'+nm(path[1])+'</b> next.', 'warn'); }
+  } else {
+    const {path} = dijkstra(pos, targetId);
+    if (path && path.length>1){ flash(path[1]);
+      setMsg('Hint (Dijkstra): cheapest route continues via <b>'+nm(path[1])+'</b> (road '+edgeWeight(pos,path[1])+').', 'warn'); }
+  }
+}
+function flash(id){ flashSet.set(id, performance.now()+1300); render(); }
+
+// ---------- Labels ----------
+function nm(id){ return nodes[id].icon+' '+nodes[id].name; }
+function nmSafe(id){ return visited.has(id) ? nm(id) : 'this place'; }
+
+// ---------- City background ----------
+let skyline=[];
+function buildSkyline(){ skyline=[]; const W=cv.clientWidth||640,H=cv.clientHeight||500; let x=-10;
+  while(x<W+10){ const w=24+Math.random()*46,h=40+Math.random()*(H*0.4); skyline.push({x,w,h}); x+=w+6+Math.random()*8; } }
+function drawBackground(W,H){
+  const photo = cityImg[city.name];
+  if (photo && photo._ready){
+    const ir=photo.width/photo.height, cr=W/H; let dw,dh,dx,dy;
+    if(ir>cr){dh=H;dw=H*ir;dx=(W-dw)/2;dy=0;} else {dw=W;dh=W/ir;dx=0;dy=(H-dh)/2;}
+    ctx.drawImage(photo,dx,dy,dw,dh);
+    // dim more in Easy so the graph is easy to read
+    ctx.fillStyle = difficulty==='easy' ? 'rgba(8,16,14,0.74)' : 'rgba(8,16,14,0.5)';
+    ctx.fillRect(0,0,W,H);
+  } else {
+    const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,city.sky[0]); g.addColorStop(1,city.sky[1]);
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle=city.skyline; ctx.globalAlpha=.9; for(const b of skyline) ctx.fillRect(b.x,H-b.h,b.w,b.h); ctx.globalAlpha=1;
+  }
+  ctx.fillStyle='rgba(10,20,16,0.6)';
+  const badge = '📍 '+city.name+'  —  photo: Wikimedia Commons';
+  ctx.font='bold 15px system-ui, sans-serif';
+  ctx.fillRect(12,12, ctx.measureText(badge).width+24, 30);
+  ctx.fillStyle='rgba(255,255,255,0.95)'; ctx.textAlign='left'; ctx.textBaseline='middle';
+  ctx.fillText(badge, 24, 27);
+}
+
+// ---------- Rendering ----------
+function resize(){ DPR=window.devicePixelRatio||1; const r=cv.getBoundingClientRect();
+  cv.width=Math.max(1,r.width*DPR); cv.height=Math.max(1,r.height*DPR); ctx.setTransform(DPR,0,0,DPR,0,0);
+  buildSkyline(); layoutNodes(); render(); }
+
+// Convert normalized node coords -> current pixel coords (keeps draw & click in sync).
+function layoutNodes(){ const W=cv.clientWidth||640, H=cv.clientHeight||500;
+  for(const nd of nodes){ if(nd.nx!==undefined){ nd.x=nd.nx*W; nd.y=nd.ny*H; } } }
+
+// The whole map is always drawn (10-12 nodes + all roads). In Explore mode the
+// nodes' identities stay hidden as "?" until you travel to them.
+function nodeVisible(id){ return true; }
+function edgeVisible(a,b){ return true; }
+
+function render(){
+  const W=cv.clientWidth,H=cv.clientHeight; ctx.clearRect(0,0,W,H);
+  if(!nodes.length) return;
+  layoutNodes();          // keep pixel positions in sync with current size
+  drawBackground(W,H);
+  const now=performance.now();
+
+  // Time Attack: keep the whole map hidden until the player starts the timer.
+  if(gameMode==='path' && !pathStarted && !finished){
+    ctx.fillStyle='rgba(8,16,14,0.6)'; ctx.fillRect(0,0,W,H);
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillStyle='#eafff6'; ctx.font='bold 28px system-ui';
+    ctx.fillText('🗺️  Map hidden', W/2, H/2-26);
+    ctx.fillStyle='#cfeee0'; ctx.font='16px system-ui';
+    ctx.fillText('Press ▶ Start Timer to reveal the roads and begin.', W/2, H/2+6);
+    ctx.fillStyle='#9ec9ba'; ctx.font='14px system-ui';
+    ctx.fillText('Goal: reach '+nodes[targetId].name+' from '+nodes[startId].name+' with the least distance.', W/2, H/2+32);
+    return;   // draw nothing else
+  }
+
+  // edges (roads): dark casing + bright solid core so they read clearly on the photo
+  ctx.lineCap='round';
+  for(let i=0;i<adj.length;i++) for(const {to,w} of adj[i]) if(to>i){
+    if(!edgeVisible(i,to)) continue;
+    const onDemo = demoPath && adjacentInPath(i,to,demoPath);
+    const walkable = !finished && !demoActive && (gameMode==='explore' || pathStarted) &&
+                     (i===pos || to===pos);
+    const ax=nodes[i].x, ay=nodes[i].y, bx=nodes[to].x, by=nodes[to].y;
+    // 1) light casing so a black road stays visible on dark areas of the photo
+    ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(bx,by);
+    ctx.setLineDash([]); ctx.lineWidth = onDemo?10:8; ctx.strokeStyle='rgba(255,255,255,0.7)'; ctx.stroke();
+    // 2) black core (walkable = gold, demo = cyan)
+    ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(bx,by);
+    ctx.lineWidth = onDemo?5:(walkable?5:3.5);
+    ctx.strokeStyle = onDemo ? 'rgba(60,180,255,1)'
+                    : walkable ? 'rgba(230,170,0,1)'
+                    : 'rgba(0,0,0,0.92)';
+    ctx.stroke();
+  }
+
+  // nodes
+  for(const nd of nodes){
+    if(!nodeVisible(nd.id)) continue;
+    const isPos = nd.id===pos, isTarget = nd.id===targetId, isStart = nd.id===startId;
+    const known = visited.has(nd.id);
+    const inDemo = demoVisit.has(nd.id);
+    // Route mode shows the full map. Explore & Find always keeps identities
+    // hidden as "?" until you visit a place (so you can't just walk to the
+    // target) — this holds in BOTH Easy and Hard; Easy is just fewer places.
+    const revealName = gameMode==='path' || known;
+    const showTarget = isTarget && (gameMode==='path' || known);
+    const inDemoRing = inDemo && !known;
+
+    // destination beacon (Route mode, or Easy Explore where target is marked)
+    if(showTarget && !finished){ const pulse=8+Math.sin(now/250)*4;
+      ctx.beginPath(); ctx.arc(nd.x,nd.y,22+pulse,0,Math.PI*2);
+      ctx.fillStyle='rgba(255,124,224,0.18)'; ctx.fill(); }
+    const fexp=flashSet.get(nd.id);
+    if(fexp&&fexp>now){ ctx.beginPath(); ctx.arc(nd.x,nd.y,30,0,Math.PI*2); ctx.fillStyle='rgba(255,207,92,0.28)'; ctx.fill(); }
+
+    ctx.save(); ctx.shadowColor='rgba(0,0,0,0.5)'; ctx.shadowBlur=8; ctx.shadowOffsetY=3;
+    ctx.beginPath(); ctx.arc(nd.x,nd.y,22,0,Math.PI*2);
+    ctx.fillStyle = isPos ? getCSS('--current')
+                  : showTarget ? getCSS('--target')
+                  : known ? getCSS('--visited')
+                  : inDemoRing ? '#8fd0ff'
+                  : '#41544c';
+    ctx.fill(); ctx.restore();
+    ctx.lineWidth=3; ctx.strokeStyle = isPos?'#ffffff':(showTarget?'#fff':'rgba(0,0,0,0.35)'); ctx.stroke();
+
+    // highlight the places you can walk to right now (adjacent to your position)
+    const canWalk = !finished && !demoActive && nd.id!==pos && isAdjacent(pos, nd.id)
+                    && (gameMode==='explore' || pathStarted);
+    if(canWalk){
+      const pr = 4 + Math.sin(now/300)*2;
+      ctx.beginPath(); ctx.arc(nd.x, nd.y, 27+pr, 0, Math.PI*2);
+      ctx.lineWidth=3; ctx.setLineDash([4,4]); ctx.strokeStyle='rgba(255,255,255,0.9)';
+      ctx.stroke(); ctx.setLineDash([]);
+    }
+
+    // icon if identity is revealed, otherwise a mystery "?"
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    if(revealName){ ctx.font='22px system-ui'; ctx.fillText(nd.icon, nd.x, nd.y+1); }
+    else { ctx.font='bold 20px system-ui'; ctx.fillStyle='#dff'; ctx.fillText('?', nd.x, nd.y+1); }
+
+    // name chip only for revealed identities
+    if(revealName){
+      ctx.font='bold 12px system-ui'; const tw=ctx.measureText(nd.name).width;
+      ctx.fillStyle='rgba(10,20,16,0.75)'; ctx.fillRect(nd.x-tw/2-6, nd.y+26, tw+12, 18);
+      ctx.fillStyle='#eafff6'; ctx.textBaseline='middle'; ctx.fillText(nd.name, nd.x, nd.y+35);
+    }
+  }
+
+  // weight labels (Route mode) — drawn LAST so nodes/name chips never cover them.
+  // Skipped in Impossible mode: with 50 nodes the numbers are just too cluttered.
+  if(gameMode==='path' && difficulty!=='impossible'){
+    ctx.font='bold 12px system-ui';
+    const placed=[];
+    const overlaps=(r)=>placed.some(p=>!(r.x+r.w<p.x||p.x+p.w<r.x||r.y+r.h<p.y||p.y+p.h<r.y));
+    for(let i=0;i<adj.length;i++) for(const {to,w} of adj[i]) if(to>i){
+      if(!edgeVisible(i,to)) continue;
+      const ax=nodes[i].x, ay=nodes[i].y, bx=nodes[to].x, by=nodes[to].y;
+      const mx=(ax+bx)/2, my=(ay+by)/2;
+      const tw=ctx.measureText(w).width, bw=tw+10, bh=18;
+      // unit perpendicular to the edge, to nudge labels off each other
+      let dx=bx-ax, dy=by-ay; const len=Math.hypot(dx,dy)||1; dx/=len; dy/=len;
+      const px=-dy, py=dx;
+      // try midpoint, then step outward alternately along the perpendicular
+      let cx=mx, cy=my, ok=false;
+      for(let step=0; step<=6 && !ok; step++){
+        const off=(step===0?0:(step%2?1:-1)*Math.ceil(step/2)*14);
+        cx=mx+px*off; cy=my+py*off;
+        const r={x:cx-bw/2, y:cy-bh/2, w:bw, h:bh};
+        if(!overlaps(r)){ placed.push(r); ok=true; }
+      }
+      if(!ok) continue;   // give up rather than stack numbers on top of each other
+      ctx.fillStyle='rgba(10,20,16,0.9)'; ctx.fillRect(cx-bw/2,cy-bh/2,bw,bh);
+      ctx.fillStyle='#ffcf5c'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(w,cx,cy);
+    }
+  }
+
+  const anim = (!finished) || [...flashSet.values()].some(t=>t>now) || demoActive;
+  if(anim) requestAnimationFrame(render);
+}
+function adjacentInPath(a,b,path){ for(let i=0;i<path.length-1;i++){ if((path[i]===a&&path[i+1]===b)||(path[i]===b&&path[i+1]===a)) return true; } return false; }
+function getCSS(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+
+// ---------- UI sync ----------
+function syncUI(){
+  // objective
+  const goal = document.getElementById('goal');
+  if(gameMode==='explore'){
+    goal.innerHTML = 'Find <span class="big">'+nm(targetId)+'</span><br><span class="stat">Start: '+nm(startId)+'. Places show as <b>?</b> until you visit them — travel road-by-road to uncover names and locate your target.</span>';
+  } else {
+    goal.innerHTML = 'Reach <span class="big">'+nm(targetId)+'</span><br><span class="stat">from '+nm(startId)+' using the <b>least total road distance</b> before time runs out.</span>';
+  }
+  // stat cards
+  document.getElementById('cardExplore').classList.toggle('hidden', gameMode!=='explore');
+  document.getElementById('cardPath').classList.toggle('hidden', gameMode!=='path');
+  if(gameMode==='explore'){
+    setNum('eSteps', steps); document.getElementById('eBest').textContent = exploreOptimal||'—';
+    setNum('eScore', score);
+  } else {
+    setNum('pDist', pathDist); document.getElementById('pOpt').textContent = pathOptimal||'?';
+    setNum('pScore', score); updateTimer();
+    const sb = document.getElementById('btnStart');
+    sb.disabled = pathStarted || finished;
+    sb.textContent = finished ? '✔ Finished' : (pathStarted ? '⏱ Timer running…' : '▶ Start Timer');
+    sb.style.opacity = (pathStarted || finished) ? '0.6' : '1';
+  }
+  // legend
+  document.getElementById('legend').innerHTML = gameMode==='explore'
+    ? row('--current','you are here')+row('--visited','visited (name revealed)')+chip('?','unknown — travel to reveal')+row('--target','target (once found)')
+    : row('--current','you are here')+row('--target','destination')+row('--visited','on your route')+'<div class="row"><span class="dot" style="background:#41544c"></span> numbers on roads = distance</div>';
+  updateRecords();
+}
+function row(varname,label){ return '<div class="row"><span class="dot" style="background:var('+varname+')"></span> '+label+'</div>'; }
+function chip(sym,label){ return '<div class="row"><span class="dot" style="background:#41544c;display:flex;align-items:center;justify-content:center;font-size:10px;color:#dff">'+sym+'</span> '+label+'</div>'; }
+function setNum(id,val){ const el=document.getElementById(id); el.textContent=val; el.classList.remove('scorepop'); void el.offsetWidth; el.classList.add('scorepop'); }
+function setMsg(html,kind){ const m=document.getElementById('msg'); m.innerHTML=html; m.className='msg '+(kind||''); }
+
+// ---------- Banner ----------
+function showBanner(title,pts,subHtml){
+  document.getElementById('bTitle').textContent=title;
+  const p=document.getElementById('bPts'); p.textContent = pts>0?'+'+pts:''; p.style.display = pts>0?'block':'none';
+  document.getElementById('bSub').innerHTML=subHtml;
+  document.getElementById('banner').classList.add('show');
+}
+function hideBanner(){ const b=document.getElementById('banner'); if(b) b.classList.remove('show'); }
+
+// ---------- Instruction sheets ----------
+const SHEETS = {
+  BFS: { title:'Breadth-First Search (BFS)', sub:'Explore the map in rings — nearest places first.',
+    steps:['Put the <b>start</b> in a <b>QUEUE</b> and mark it visited.',
+      'Take the place at the <b>FRONT</b> of the queue.',
+      'For each unvisited neighbor: mark visited, add it to the <b>BACK</b> of the queue.',
+      'Repeat until you reach the target.'],
+    why:'BFS visits places in order of distance, so it always finds the route with the <b>fewest roads</b> first. Best when every road counts the same.',
+    code:'queue = [start]\nseen = {start}\nwhile queue:\n  u = queue.pop(0)   # front\n  if u == target: done\n  for v in neighbors(u):\n    if v not in seen:\n      seen.add(v); queue.append(v)' },
+  DFS: { title:'Depth-First Search (DFS)', sub:'Follow one road as deep as possible, then backtrack.',
+    steps:['Put the <b>start</b> on a <b>STACK</b> and mark it visited.',
+      'Take the place at the <b>TOP</b> of the stack.',
+      'Go to one unvisited neighbor, push it on <b>TOP</b>.',
+      'If stuck (no unvisited neighbors), <b>backtrack</b> by popping.'],
+    why:'DFS plunges deep quickly and uses little memory, but it can wander far — it does <b>not</b> guarantee the shortest route.',
+    code:'stack = [start]\nseen = {start}\nwhile stack:\n  u = stack.pop()    # top\n  if u == target: done\n  for v in neighbors(u):\n    if v not in seen:\n      seen.add(v); stack.append(v)' },
+  DIJKSTRA: { title:'Shortest Route (Dijkstra)', sub:'Roads have distances — find the cheapest total.',
+    steps:['Track the cheapest known distance to every place (start = 0, others = ∞).',
+      'Pick the <b>unvisited</b> place with the <b>smallest</b> total distance.',
+      'For each neighbor, if going through here is cheaper, update its distance.',
+      'Repeat until the target has its final (smallest) distance.'],
+    why:'Always expanding the cheapest-so-far place guarantees the <b>true shortest total distance</b>. Greedily picking the nearest road each step does <b>not</b>!',
+    code:'dist[start] = 0\nwhile unvisited:\n  u = unvisited node with min dist\n  for (v, w) in edges(u):\n    if dist[u]+w < dist[v]:\n      dist[v] = dist[u]+w' }
+};
+function openSheet(key){
+  currentSheet = key==='DIJKSTRA' ? currentSheet : key;
+  const s = SHEETS[key];
+  document.getElementById('sheetBody').innerHTML =
+    '<h2>📋 '+s.title+'</h2><p class="sub">'+s.sub+'</p>'+
+    '<ol>'+s.steps.map(x=>'<li>'+x+'</li>').join('')+'</ol>'+
+    '<div class="why">💡 '+s.why+'</div>'+
+    '<pre>'+s.code+'</pre>'+
+    '<div class="close">'+
+      (key!=='DIJKSTRA' ? '<button id="sheetTry">👻 Demonstrate '+key+' on this map</button>' : '<button id="sheetTry">👻 Demonstrate on this map</button>')+
+      '<button class="pri" id="sheetClose">Got it</button></div>';
+  document.getElementById('modal').classList.add('show');
+  document.getElementById('sheetClose').onclick = closeSheet;
+  document.getElementById('sheetTry').onclick = ()=>{ closeSheet(); if(key!=='DIJKSTRA') currentSheet=key; demonstrate(); };
+}
+function closeSheet(){ document.getElementById('modal').classList.remove('show'); }
+
+function buildSheetButtons(){
+  const box = document.getElementById('sheetButtons'); box.innerHTML='';
+  const keys = gameMode==='explore' ? ['BFS','DFS'] : ['DIJKSTRA'];
+  const labels = { BFS:'📘 BFS Sheet', DFS:'📗 DFS Sheet', DIJKSTRA:'📙 Shortest-Route Sheet' };
+  keys.forEach(k=>{ const b=document.createElement('button'); b.textContent=labels[k]; b.onclick=()=>openSheet(k); box.appendChild(b); });
+}
+
+// ---------- Mode switching ----------
+function setGameMode(m){
+  gameMode = m;
+  document.getElementById('tabExplore').classList.toggle('on', m==='explore');
+  document.getElementById('tabPath').classList.toggle('on', m==='path');
+  document.getElementById('headTag').textContent = m==='explore'
+    ? 'Discover the hidden map and reach the target landmark' : 'Race the clock — reach the target with the least distance';
+  document.getElementById('btnDemo').textContent = m==='explore' ? '👻 Demonstrate' : '👻 Show best route';
+  currentSheet = m==='explore' ? 'BFS' : 'DIJKSTRA';
+  buildSheetButtons();
+  makeGraph();     // fresh map suited to the mode
+}
+
+function setDifficulty(d){
+  difficulty = d;
+  document.getElementById('diffEasy').classList.toggle('on', d==='easy');
+  document.getElementById('diffHard').classList.toggle('on', d==='hard');
+  document.getElementById('diffOut').classList.toggle('on', d==='outrageous');
+  document.getElementById('diffImp').classList.toggle('on', d==='impossible');
+  makeGraph({keepCity:true});   // re-setup so reveal/timer rules apply
+}
+
+// ---------- Input ----------
+cv.addEventListener('click', e=>{
+  layoutNodes();   // ensure pixel coords match the canvas right now
+  const r=cv.getBoundingClientRect();
+  const x=(e.clientX-r.left)*(cv.clientWidth/r.width), y=(e.clientY-r.top)*(cv.clientHeight/r.height);
+  let hit=-1,best=30;
+  for(const nd of nodes){ if(!nodeVisible(nd.id)) continue; const d=Math.hypot(nd.x-x,nd.y-y); if(d<best){best=d;hit=nd.id;} }
+  if(hit!==-1) travelTo(hit);
+});
+document.getElementById('tabExplore').onclick=()=>setGameMode('explore');
+document.getElementById('tabPath').onclick=()=>setGameMode('path');
+document.getElementById('diffEasy').onclick=()=>setDifficulty('easy');
+document.getElementById('diffHard').onclick=()=>setDifficulty('hard');
+document.getElementById('diffOut').onclick=()=>setDifficulty('outrageous');
+document.getElementById('diffImp').onclick=()=>setDifficulty('impossible');
+document.getElementById('btnNew').onclick=()=>makeGraph();
+document.getElementById('btnRestart').onclick=()=>resetState();               // same map, restart attempt
+document.getElementById('btnReset').onclick=()=>makeGraph({keepCity:true});    // fresh roads, same city
+document.getElementById('btnDemo').onclick=()=>demonstrate();
+document.getElementById('btnStart').onclick=()=>startPathRound();
+document.getElementById('bNext').onclick=()=>{ hideBanner(); makeGraph(); };
+document.getElementById('modal').onclick=(e)=>{ if(e.target.id==='modal') closeSheet(); };
+window.addEventListener('keydown', e=>{
+  if(e.key==='h'||e.key==='H') hint();
+  if(e.key==='n'||e.key==='N') makeGraph();
+  if(e.key==='Escape') closeSheet();
+});
+window.addEventListener('resize', resize);
+// also react to container/layout size changes (not just window resizes)
+if (window.ResizeObserver){ const ro=new ResizeObserver(()=>resize()); ro.observe(cv); }
+
+// ---------- Boot ----------
+function boot(){ resize(); updateRecords(); buildSheetButtons(); setGameMode('path');
+  // re-sync sizing once layout/fonts settle (guards against off-view on first paint)
+  setTimeout(()=>{ resize(); }, 60);
+  setTimeout(()=>{ resize(); }, 300);
+}
+window.addEventListener('load', boot);
+</script>
+</body>
+</html>

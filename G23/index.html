@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Room Architect — Learn Graphs</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>Room Architect</h1>
+    <p class="tagline">Build a layout of rooms, then navigate it. Learn how directed &amp; undirected graphs really work.</p>
+  </header>
+
+  <main>
+    <section id="toolbar">
+      <div class="tool-group">
+        <span class="group-label">Tool</span>
+        <button class="tool active" data-mode="arrange">Arrange rooms</button>
+        <button class="tool" data-mode="link-oneway">Link one-way &rarr;</button>
+        <button class="tool" data-mode="link-twoway">Link two-way &mdash;</button>
+        <button class="tool" data-mode="erase-link">Erase link</button>
+      </div>
+      <div class="tool-group">
+        <button id="check-btn">&#10003; Auto-check</button>
+        <button id="run-btn" class="primary">&#9654; Run</button>
+        <button id="reset-btn">Reset run</button>
+        <button id="replace-btn">Return all rooms to tray</button>
+      </div>
+    </section>
+
+    <div class="stage">
+      <aside id="levels-panel">
+        <h2>Levels</h2>
+        <ul id="levels"></ul>
+        <div id="progress"></div>
+      </aside>
+
+      <canvas id="board" width="900" height="600"></canvas>
+
+      <aside id="side">
+        <h2>Room tray</h2>
+        <p class="muted-note">Each room has a fixed budget of paths: <b>&rarr;</b> one-way-out and <b>&mdash;</b> two-way. Click a room, then a grid cell to place it. Click a placed room to pick it up.</p>
+        <div id="tray"></div>
+
+        <h2 style="margin-top:16px">How to play</h2>
+        <ol id="help">
+          <li><b>Arrange</b> every room from the tray onto the board.</li>
+          <li><b>Link one-way</b>: click source room, then target room (uses one &rarr; port on the source).</li>
+          <li><b>Link two-way</b>: click two rooms (uses one &mdash; port on <i>each</i>).</li>
+          <li>Hit <b>Run</b>. Move along your links, respecting arrows. <b>Collect all items</b> to unlock the <span class="pill exit">Exit</span>.</li>
+        </ol>
+        <div id="status" class="status"></div>
+      </aside>
+    </div>
+  </main>
+
+  <div id="modal" class="modal hidden">
+    <div class="modal-card">
+      <h2 id="modal-title">Well done! &#127881;</h2>
+      <p id="modal-text"></p>
+      <div class="modal-actions">
+        <button id="modal-next" class="primary">Continue to next level &rarr;</button>
+        <button id="modal-exit">Stay here</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="src/game.js"></script>
+</body>
+</html>

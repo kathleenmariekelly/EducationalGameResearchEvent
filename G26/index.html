@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Discrete Quest — Math Battle Arena</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg1: #14122b;
+    --bg2: #241b47;
+    --accent: #7c5cff;
+    --accent2: #ff5cc8;
+    --good: #46e39b;
+    --bad: #ff5c6a;
+    --gold: #ffd35c;
+    --panel: #1d1838;
+    --panel-border: #4a3f7a;
+    --line: #0a0818;
+    --text: #eef0ff;
+    --pix: "Press Start 2P", "Courier New", monospace;
+    --read: "Courier New", ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; height: 100%;
+    font-family: var(--read);
+    color: var(--text);
+    background: var(--bg1);
+    image-rendering: pixelated;
+    overflow: hidden;
+  }
+  #app { height: 100vh; display: flex; flex-direction: column; align-items: center; }
+
+  header { width: 100%; text-align: center; padding: 12px 0 4px; }
+  header h1 {
+    margin: 0; font-family: var(--pix); font-size: 20px; line-height: 1.4;
+    color: var(--gold);
+    text-shadow: 3px 3px 0 var(--line);
+  }
+  header p { margin: 8px 0 0; font-size: 12px; opacity: 0.75; }
+
+  /* blocky pixel panel helper */
+  .arena, .panel, .card, .nameplate, .choice, .spell, .btn, .explain {
+    border-style: solid; border-width: 3px; border-color: var(--panel-border);
+    border-radius: 0;
+    box-shadow: 4px 4px 0 var(--line);
+  }
+
+  /* ---- overworld ---- */
+  #explore { width: min(880px, 96vw); display: flex; flex-direction: column; align-items: center; margin: 10px 0; }
+  #explore.hidden { display: none; }
+  #viewport { position: relative; width: 100%; line-height: 0; }
+  #world {
+    width: 100%; height: auto; image-rendering: pixelated;
+    background: #1c3a2e;
+    border: 3px solid var(--panel-border); border-radius: 0;
+    box-shadow: 4px 4px 0 var(--line);
+  }
+  #minimap {
+    position: absolute; top: 10px; right: 10px;
+    width: 24%; height: auto; image-rendering: pixelated;
+    border: 3px solid var(--panel-border);
+    box-shadow: 3px 3px 0 var(--line);
+    background: #000;
+  }
+  .hint { font-family: var(--pix); font-size: 10px; margin-top: 12px; color: var(--gold); text-shadow: 2px 2px 0 var(--line); }
+  .questline { font-size: 12px; margin-top: 8px; opacity: 0.9; text-align: center; }
+  .btnrow { display:flex; gap:10px; margin-top:8px; }
+  .qsect { font-family: var(--pix); font-size:10px; color: var(--gold); margin:12px 0 8px; }
+  .quest { padding:6px 8px; border-left:3px solid var(--panel-border); margin-bottom:6px; font-size:13px; line-height:1.4; }
+  .quest.qdone { opacity:0.55; border-left-color: var(--good); }
+  .quest .qd { opacity:0.8; font-size:12px; }
+  .quest .qp { color: var(--gold); font-size:11px; }
+
+  /* ---- battle wrapper ---- */
+  #battle { display: none; flex-direction: column; align-items: center; width: 100%; }
+  #battle.show { display: flex; }
+
+  .arena {
+    position: relative;
+    width: min(880px, 96vw);
+    height: 320px;
+    margin: 10px 0;
+    background: var(--bg2);
+    overflow: hidden;
+  }
+  .ground {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 40%;
+    background: #1c3a2e; border-top: 3px solid #2f6b52;
+  }
+
+  .fighter { position: absolute; bottom: 20%; text-align: center; width: 160px; }
+  .fighter .sprite {
+    width: 96px; height: 96px; display: inline-block;
+    image-rendering: pixelated;
+    transition: transform 0.1s steps(2);
+  }
+  #player { left: 8%; }
+  #enemy  { right: 8%; }
+  #player .sprite { transform: scaleX(-1); }
+
+  .nameplate {
+    background: var(--panel); padding: 6px 8px; margin-bottom: 8px; width: 150px;
+  }
+  #player .nameplate { margin-left: auto; }
+  .nameplate .row { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px; font-family: var(--pix); }
+  .bar { height: 12px; background: var(--line); border: 2px solid #000; overflow: hidden; }
+  .bar > i { display: block; height: 100%; width: 100%; transition: width 0.3s steps(6); }
+  .hpfill { background: var(--good); }
+  .hpfill.low { background: var(--bad); }
+
+  .floater {
+    position: absolute; font-family: var(--pix); font-size: 16px; pointer-events: none;
+    animation: floatUp 0.9s steps(6) forwards; text-shadow: 2px 2px 0 var(--line);
+  }
+  @keyframes floatUp { from { opacity: 1; transform: translateY(0);} to { opacity: 0; transform: translateY(-56px);} }
+  .shake { animation: shake 0.3s steps(2); }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-8px)} 75%{transform:translateX(8px)} }
+  .cast { animation: cast 0.3s steps(3); }
+  @keyframes cast { 0%{transform:scale(1)} 50%{transform:scale(1.15)} 100%{transform:scale(1)} }
+
+  .panel {
+    width: min(880px, 96vw);
+    background: var(--panel);
+    padding: 14px 16px 16px; margin-bottom: 12px;
+  }
+  .qhead { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .badge {
+    font-family: var(--pix); font-size: 10px; text-transform: uppercase;
+    padding: 6px 8px; border: 2px solid #000; color: #14122b;
+  }
+  .badge.sets  { background: #b6a4ff; }
+  .badge.comb  { background: #ff9ede; }
+  .badge.num   { background: #7ff0c0; }
+  .badge.logic { background: #ffe08a; }
+  .badge.seq   { background: #a8e6cf; }
+  .streak { font-family: var(--pix); font-size: 10px; color: var(--gold); }
+
+  .question { font-size: 17px; margin: 4px 0 14px; min-height: 26px; line-height: 1.5; }
+  .question code {
+    background: var(--line); padding: 1px 6px; color:#ffe9a8; border: 1px solid #000;
+  }
+
+  .spellbar { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; margin-bottom: 4px; }
+  .spell {
+    font-family: var(--read); color: var(--text); cursor: pointer;
+    background: var(--panel); padding: 10px 8px; text-align: center;
+  }
+  .spell:hover:not(:disabled) { transform: translate(-2px,-2px); box-shadow: 6px 6px 0 var(--line); }
+  .spell:active:not(:disabled) { transform: translate(2px,2px); box-shadow: 1px 1px 0 var(--line); }
+  .spell:disabled { opacity: 0.4; cursor: default; }
+  .spell .ico { font-size: 30px; display:block; }
+  .spell .nm { font-family: var(--pix); font-size: 10px; display:block; margin: 4px 0 2px; }
+  .spell .cat { font-size: 11px; opacity: 0.7; display:block; }
+  .spell.arcane { border-color: var(--accent); }
+  .spell.fire   { border-color: #ff8a3c; }
+  .spell.frost  { border-color: #46c8e3; }
+  .spell.volt   { border-color: #ffd35c; }
+  .spell.vine   { border-color: #7ac74f; }
+  .weaktag { font-family: var(--pix); font-size: 8px; color: var(--gold); display:block; min-height:12px; margin-top:4px; }
+
+  .choices { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .choice {
+    font-family: var(--read); font-size: 16px; color: var(--text);
+    background: var(--panel); padding: 12px; cursor: pointer; text-align: left;
+  }
+  .choice:hover:not(:disabled) { transform: translate(-2px,-2px); box-shadow: 6px 6px 0 var(--line); border-color: var(--accent); }
+  .choice:active:not(:disabled) { transform: translate(2px,2px); box-shadow: 1px 1px 0 var(--line); }
+  .choice:disabled { cursor: default; }
+  .choice.correct { background: #1e4d38; border-color: var(--good); }
+  .choice.wrong   { background: #4d1e24; border-color: var(--bad); }
+
+  .log { font-size: 13px; min-height: 18px; margin-top: 12px; text-align:center; font-family: var(--pix); font-size: 10px; line-height: 1.6; }
+
+  .explain {
+    margin-top: 12px; font-size: 14px; line-height: 1.5;
+    background: var(--bg1); padding: 10px 12px; display: none;
+  }
+  .explain.show { display: block; }
+  .explain code { background: var(--line); padding: 1px 5px; color:#ffe9a8; border:1px solid #000; }
+  #nextBtn { margin-top: 12px; font-size: 11px; padding: 10px 20px; }
+
+  .overlay {
+    position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
+    background: rgba(8,4,20,0.9); z-index: 20;
+  }
+  .overlay.show { display: flex; }
+  .card {
+    background: var(--bg2);
+    padding: 28px 32px; text-align: center; max-width: 460px;
+    max-height: 90vh; overflow-y: auto;
+  }
+  .card h2 { margin: 0 0 12px; font-family: var(--pix); font-size: 22px; color: var(--gold); text-shadow: 2px 2px 0 var(--line); }
+  .card p { opacity: 0.9; line-height: 1.6; font-size: 14px; }
+  .btn {
+    margin-top: 16px; font-family: var(--pix); font-size: 12px;
+    color: #14122b; background: var(--accent);
+    padding: 12px 22px; cursor: pointer;
+  }
+  .btn:hover { background: var(--accent2); }
+  .btn:active { transform: translate(2px,2px); box-shadow: 1px 1px 0 var(--line); }
+  .topbar { display:flex; gap:18px; font-family: var(--pix); font-size:10px; opacity:0.85; margin-top: 4px; }
+  .topbar b { color: var(--gold); }
+
+  .bag { display:flex; flex-wrap:wrap; justify-content:center; gap:6px; margin-top:8px; max-width:min(880px,96vw); min-height:22px; }
+  .bagempty { font-family: var(--pix); font-size:9px; opacity:0.55; }
+  .item {
+    display:flex; align-items:center; gap:4px;
+    background: var(--panel); border:2px solid var(--panel-border);
+    padding:3px 7px; box-shadow:2px 2px 0 var(--line);
+  }
+  .item .ii { font-size:15px; }
+  .item .ic { font-family: var(--pix); font-size:9px; color: var(--gold); }
+  .item .inm { font-size:11px; }
+  .reward { color: var(--gold) !important; }
+
+  .minibtn {
+    margin-top:8px; font-family: var(--pix); font-size:9px; color:#14122b;
+    background: var(--gold); border:2px solid #000; padding:6px 12px; cursor:pointer;
+    box-shadow:2px 2px 0 var(--line);
+  }
+  .minibtn:hover { filter:brightness(1.1); }
+  .minibtn:active { transform:translate(2px,2px); box-shadow:0 0 0 var(--line); }
+
+  .potionbar { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin:8px 0 2px; }
+  .potionbtn {
+    font-family: var(--read); font-size:13px; color:var(--text); cursor:pointer;
+    background: var(--panel); border:2px solid var(--good); padding:6px 10px;
+    box-shadow:2px 2px 0 var(--line);
+  }
+  .potionbtn:hover { background: rgba(70,227,155,0.2); }
+  .potionbtn:active { transform:translate(2px,2px); box-shadow:0 0 0 var(--line); }
+
+  .craftcard { max-width: 560px; }
+  #recipeList { text-align:left; margin:8px 0; max-height:50vh; overflow-y:auto; }
+  .recipe {
+    display:flex; align-items:center; gap:10px; padding:8px;
+    border:2px solid var(--panel-border); box-shadow:2px 2px 0 var(--line);
+    margin-bottom:8px; background: var(--panel);
+  }
+  .recipe .rico { font-size:26px; }
+  .recipe .rmid { flex:1; }
+  .recipe .rnm { font-family: var(--pix); font-size:10px; color: var(--gold); }
+  .recipe .rdesc { font-size:12px; opacity:0.85; margin:3px 0; }
+  .recipe .rcost { font-size:11px; }
+  .recipe .rcost .ok { color: var(--good); }
+  .recipe .rcost .no { color: var(--bad); }
+  .recipe .cbtn {
+    font-family: var(--pix); font-size:9px; color:#14122b; background: var(--accent);
+    border:2px solid #000; padding:8px 10px; cursor:pointer;
+  }
+  .recipe .cbtn:disabled { background:#555; color:#999; cursor:default; }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>DISCRETE QUEST</h1>
+    <p>Cast spells by solving Sets · Combinatorics · Number Theory</p>
+  </header>
+
+  <div class="topbar">
+    <span>LVL <b id="uiLevel">1</b></span>
+    <span>KILLS <b id="uiKills">0</b></span>
+    <span>BEST <b id="uiBest">0</b></span>
+  </div>
+
+  <div class="bag" id="inventory"><span class="bagempty">Bag: (defeat monsters for drops)</span></div>
+  <div class="btnrow">
+    <button class="minibtn" id="questBtn">📜 Quest Log</button>
+    <button class="minibtn" id="craftBtn">🧪 Craft Potions</button>
+  </div>
+
+  <div id="explore">
+    <div id="viewport">
+      <canvas id="world" width="640" height="320"></canvas>
+      <canvas id="minimap" width="160" height="100"></canvas>
+    </div>
+    <div class="hint" id="worldHint">Use W A S D to move &middot; Walk into a monster to battle</div>
+    <div class="questline" id="questObjective"></div>
+  </div>
+
+  <div id="battle">
+  <div class="arena" id="arena">
+    <div class="ground"></div>
+
+    <div class="fighter" id="player">
+      <div class="nameplate">
+        <div class="row"><span>🧙</span><span id="pHpText">100/100</span></div>
+        <div class="bar"><i class="hpfill" id="pHp"></i></div>
+      </div>
+      <canvas class="sprite" id="pSprite" width="32" height="32"></canvas>
+    </div>
+
+    <div class="fighter" id="enemy">
+      <div class="nameplate">
+        <div class="row"><span id="eName">Slime</span><span id="eHpText">30/30</span></div>
+        <div class="bar"><i class="hpfill" id="eHp"></i></div>
+      </div>
+      <canvas class="sprite" id="eSprite" width="32" height="32"></canvas>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="qhead">
+      <span class="badge sets" id="qBadge">Sets</span>
+      <span class="streak" id="qStreak">🔥 Streak: 0</span>
+    </div>
+    <div class="question" id="qText">Choose a spell to attack!</div>
+
+    <div class="spellbar" id="spellbar">
+      <button class="spell arcane" data-spell="arcane">
+        <span class="ico">🔮</span><span class="nm">Arcane</span>
+        <span class="cat">Sets</span><span class="weaktag" data-w="arcane"></span>
+      </button>
+      <button class="spell fire" data-spell="fire">
+        <span class="ico">🔥</span><span class="nm">Fireball</span>
+        <span class="cat">Combinatorics</span><span class="weaktag" data-w="fire"></span>
+      </button>
+      <button class="spell frost" data-spell="frost">
+        <span class="ico">❄️</span><span class="nm">Frost</span>
+        <span class="cat">Number Theory</span><span class="weaktag" data-w="frost"></span>
+      </button>
+      <button class="spell volt" data-spell="volt">
+        <span class="ico">⚡</span><span class="nm">Volt</span>
+        <span class="cat">Logic</span><span class="weaktag" data-w="volt"></span>
+      </button>
+      <button class="spell vine" data-spell="vine">
+        <span class="ico">🌿</span><span class="nm">Bramble</span>
+        <span class="cat">Sequences</span><span class="weaktag" data-w="vine"></span>
+      </button>
+    </div>
+
+    <div class="potionbar" id="potionbar"></div>
+
+    <div class="choices" id="qChoices"></div>
+    <div class="log" id="log">Defeat the monster to advance!</div>
+    <div class="explain" id="explain">
+      <div id="explainText"></div>
+      <button class="btn next" id="nextBtn">Next ▶</button>
+    </div>
+  </div>
+  </div><!-- /#battle -->
+</div>
+
+<div class="overlay show" id="tutorial">
+  <div class="card">
+    <h2>DISCRETE QUEST</h2>
+    <p>
+      A <b>Chaos Curse</b> has unleashed monsters across the land.
+      Only a mage who masters discrete mathematics can lift it!<br><br>
+      🗺️ <b>Explore</b> the biomes with the
+      <b style="color:var(--gold)">W A S D</b> keys (arrows too).<br>
+      Meadow, Desert, Tundra, Cavern, Swamp &amp; Volcano each<br>
+      hide different <b>monsters</b>.<br><br>
+      👾 Walk into a monster to start a battle.<br><br>
+      🔮 Pick one of <b>5 spells</b> — 🔮 Arcane, 🔥 Fireball,<br>
+      ❄️ Frost, ⚡ Volt, 🌿 Bramble — then solve its<br>
+      discrete-math problem to cast it. Match the monster's<br>
+      <b style="color:var(--gold)">weakness</b> for a critical hit!<br><br>
+      🧪 Monsters drop <b>items</b> — open <b>Craft Potions</b> to brew<br>
+      healing potions &amp; permanent buffs.<br><br>
+      👑 Clear every monster in a biome to summon its <b>boss</b>,<br>
+      who drops <b>rare</b> materials for legendary recipes.<br><br>
+      📜 Check the <b>Quest Log</b> for your main quest &amp; side quests<br>
+      — complete them for rewards!<br><br>
+      🏆 Break the Chaos Curse by defeating the Inferno Lord!
+    </p>
+    <button class="btn" id="tutBtn">Start Adventure</button>
+  </div>
+</div>
+
+<div class="overlay" id="questOverlay">
+  <div class="card craftcard">
+    <h2>📜 QUEST LOG</h2>
+    <div id="questList"></div>
+    <button class="btn" id="questClose">Close</button>
+  </div>
+</div>
+
+<div class="overlay" id="craftOverlay">
+  <div class="card craftcard">
+    <h2>🧪 CRAFTING</h2>
+    <p id="craftMsg">Combine drops into potions &amp; permanent buffs.</p>
+    <div id="recipeList"></div>
+    <button class="btn" id="craftClose">Close</button>
+  </div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="card">
+    <h2 id="ovTitle">Game Over</h2>
+    <p id="ovText"></p>
+    <button class="btn" id="ovBtn">Play Again</button>
+  </div>
+</div>
+
+<script src="game.js"></script>
+</body>
+</html>

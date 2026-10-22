@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CodeQuest — learn C++, Discrete Math & DSA</title>
+  <link rel="stylesheet" href="src/style.css" />
+</head>
+<body>
+  <div id="app">
+    <div class="topbar">
+      <div class="brand">Code<span>Quest</span> 🎮</div>
+      <div class="stats">
+        <div class="stat">⭐ <b id="stat-xp">0</b> XP</div>
+        <div class="stat">💎 <b id="stat-gems">0</b></div>
+        <div class="stat">🔥 <b id="stat-streak">0</b> streak</div>
+        <div class="stat">🔁 <b id="stat-due">0</b> to review</div>
+        <button id="shop-btn" class="btn small">🛍️ Shop</button>
+      </div>
+    </div>
+    <div id="screen" class="screen"></div>
+  </div>
+
+  <!-- Pet companion "Bolt" (bottom corner) -->
+  <div id="pet" class="bolt-track" title="Pet Bolt!">
+    <div class="pet-stars" id="pet-stars"></div>
+    <div class="pet-body" id="pet-body"></div>
+    <div class="pet-info">
+      <div class="pet-name" id="pet-name">Baby Bolt</div>
+      <div class="pet-bar"><div id="pet-fill"></div></div>
+      <div class="pet-hint" id="pet-hint">tap to pet ❤️</div>
+    </div>
+  </div>
+
+  <!-- Load order matters: content -> engine -> ui -->
+  <script src="src/content.js"></script>
+  <script src="src/game.js"></script>
+  <script src="src/ui.js"></script>
+</body>
+</html>

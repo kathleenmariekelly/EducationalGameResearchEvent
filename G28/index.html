@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SQL Detective</title>
+  <meta name="description" content="Crack cases by querying a hidden suspect database with SQL." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- animated night-sky backdrop -->
+  <div id="bg" aria-hidden="true">
+    <div class="spotlight spot1"></div>
+    <div class="spotlight spot2"></div>
+    <div class="stars"></div>
+    <div class="skyline"></div>
+  </div>
+
+  <div id="app">
+    <!-- START SCREEN -->
+    <section id="start-screen">
+      <div class="start-card">
+        <div class="deco-star s1">✦</div>
+        <div class="deco-star s2">★</div>
+        <div class="deco-star s3">✦</div>
+        <div id="mascot"></div>
+        <div class="brand-big">SQL DETECTIVE</div>
+        <p class="tagline">The suspect database is sealed. Your only tool is SQL.
+          Translate the clues into queries, shrink the crowd, and cuff the culprit.</p>
+        <h3>Choose your rank</h3>
+        <div id="difficulty-choices">
+          <button class="diff" data-diff="easy">
+            <span class="diff__badge ico" data-ico="medal1"></span>
+            <span class="diff__name">Rookie</span>
+            <span class="diff__desc">~15 suspects · full hints · WHERE, =, AND</span>
+          </button>
+          <button class="diff" data-diff="medium">
+            <span class="diff__badge ico" data-ico="medal2"></span>
+            <span class="diff__name">Detective</span>
+            <span class="diff__desc">~35 suspects · a nudge only · BETWEEN, IN, LIKE</span>
+          </button>
+          <button class="diff" data-diff="hard">
+            <span class="diff__badge ico" data-ico="medal3"></span>
+            <span class="diff__name">Chief Inspector</span>
+            <span class="diff__desc">~40 suspects · no hints · JOIN two tables</span>
+          </button>
+        </div>
+        <p class="start-note">Three cases per shift. Close them all to finish your caseload.</p>
+      </div>
+    </section>
+
+    <!-- GAME SCREEN -->
+    <div id="game-screen" class="hidden">
+      <header id="topbar">
+        <div class="brand"><i class="ico" data-ico="search"></i> SQL&nbsp;DETECTIVE</div>
+        <div class="topbar-right">
+          <span id="rank-badge"></span>
+          <span id="score-badge">Score: 0</span>
+          <span id="case-progress"></span>
+          <button id="menu-btn"><i class="ico" data-ico="menu"></i> Menu</button>
+        </div>
+      </header>
+
+      <main id="board">
+        <section id="left-col">
+          <div class="panel" id="case-panel">
+            <h2 id="case-title"></h2>
+            <p id="case-scenario"></p>
+          </div>
+
+          <div class="panel" id="clues-panel">
+            <h3><i class="ico" data-ico="clue"></i> Clues on the board</h3>
+            <p class="hint" id="clues-hint"></p>
+            <div id="clue-list"></div>
+          </div>
+
+          <div class="panel" id="schema-panel">
+            <h3><i class="ico" data-ico="db"></i> Table schema</h3>
+            <p class="hint">The rows are hidden — but you can see the columns you're allowed to query.</p>
+            <div id="schema-view"></div>
+          </div>
+        </section>
+
+        <section id="right-col">
+          <div class="panel" id="query-panel">
+            <h3><i class="ico" data-ico="query"></i> Your query</h3>
+            <div id="join-controls" class="hidden"></div>
+            <div id="where-terms"></div>
+            <div id="add-row">
+              <select id="connector-select" title="How to join this to the query so far">
+                <option value="AND">AND</option>
+                <option value="OR">OR</option>
+              </select>
+              <input id="cond-input" type="text" spellcheck="false" autocomplete="off"
+                     placeholder="e.g.  hand = 'left'" />
+              <button id="add-btn">Add</button>
+            </div>
+            <p id="syntax-error" class="hidden"></p>
+            <pre id="sql-view"></pre>
+          </div>
+
+          <div class="panel" id="results-panel">
+            <h3><i class="ico" data-ico="lineup"></i> The line-up</h3>
+            <div id="radar"></div>
+            <div id="suspect-grid"></div>
+            <div id="reveal"></div>
+            <div id="verdict"></div>
+            <div id="actions">
+              <button id="arrest-btn" disabled><i class="ico" data-ico="arrest"></i> Make the arrest</button>
+              <button id="next-btn" class="hidden">Next case <i class="ico" data-ico="next"></i></button>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <!-- SUMMARY SCREEN -->
+    <section id="summary-screen" class="hidden">
+      <div class="start-card">
+        <div class="deco-star s1">★</div>
+        <div class="deco-star s2">✦</div>
+        <div class="brand-big">CASELOAD CLOSED</div>
+        <div class="trophy ico" data-ico="trophy"></div>
+        <p id="summary-text" class="tagline"></p>
+        <button id="replay-btn" class="diff"><span class="diff__name">▶ New shift</span></button>
+      </div>
+    </section>
+  </div>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

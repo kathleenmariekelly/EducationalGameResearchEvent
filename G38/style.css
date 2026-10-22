@@ -1,0 +1,300 @@
+:root {
+  --bg: #0f1420;
+  --panel: #182031;
+  --panel-2: #1f2a40;
+  --ink: #e6ecf5;
+  --muted: #9fb0c8;
+  --accent: #4fd1c5;
+  --accent-2: #f6ad55;
+  --good: #48bb78;
+  --bad: #f56565;
+  --border: #2a3651;
+  --radius: 12px;
+  --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  background: radial-gradient(1200px 600px at 50% -10%, #1a2740 0%, var(--bg) 60%);
+  color: var(--ink);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+header {
+  text-align: center;
+  padding: 24px 16px 8px;
+}
+header h1 { margin: 0; font-size: 1.9rem; letter-spacing: 0.5px; }
+.tagline { color: var(--muted); margin: 4px 0 0; }
+
+main {
+  flex: 1;
+  width: min(820px, 92vw);
+  margin: 16px auto;
+}
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 22px 24px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+}
+
+.stage-label {
+  display: inline-block;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  padding: 3px 12px;
+  margin-bottom: 12px;
+}
+
+.problem-statement {
+  background: var(--panel-2);
+  border-left: 3px solid var(--accent-2);
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin: 12px 0 18px;
+  line-height: 1.5;
+}
+
+code, .mono { font-family: var(--mono); }
+.mono-block {
+  background: #0c1119;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-family: var(--mono);
+  white-space: pre-wrap;
+  color: #cfe3ff;
+}
+
+h2 { margin: 6px 0 4px; font-size: 1.35rem; }
+.prompt { color: var(--muted); margin: 0 0 14px; }
+
+.options { display: grid; gap: 10px; }
+.option {
+  text-align: left;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--ink);
+  padding: 13px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: transform 0.05s, border-color 0.15s, background 0.15s;
+}
+.option:hover { border-color: var(--accent); transform: translateY(-1px); }
+.option.correct { border-color: var(--good); background: rgba(72,187,120,0.15); }
+.option.wrong { border-color: var(--bad); background: rgba(245,101,101,0.12); }
+.option:disabled { cursor: default; }
+
+.feedback {
+  margin-top: 16px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  line-height: 1.5;
+  display: none;
+}
+.feedback.show { display: block; }
+.feedback.good { background: rgba(72,187,120,0.12); border: 1px solid var(--good); }
+.feedback.bad  { background: rgba(245,101,101,0.12); border: 1px solid var(--bad); }
+
+.actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+button.primary {
+  background: var(--accent);
+  color: #06231f;
+  border: none;
+  font-weight: 700;
+  padding: 11px 22px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 1rem;
+}
+button.primary:hover { filter: brightness(1.08); }
+button.ghost {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  padding: 11px 18px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+footer { padding: 12px; text-align: center; }
+#progress { color: var(--muted); font-size: 0.85rem; }
+.bar { height: 6px; background: var(--border); border-radius: 999px; overflow: hidden; width: min(820px,92vw); margin: 0 auto 8px; }
+.bar > span { display: block; height: 100%; background: var(--accent); transition: width 0.3s; }
+
+/* ===================== Recursion Realm battle UI ===================== */
+.center { text-align: center; }
+
+.char-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-top: 12px; }
+.char-card {
+  background: var(--panel-2);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 16px;
+  cursor: pointer;
+  color: var(--ink);
+  text-align: center;
+  transition: transform 0.08s, box-shadow 0.15s;
+}
+.char-card:hover { transform: translateY(-3px); box-shadow: 0 10px 24px rgba(0,0,0,0.35); }
+.char-emoji { font-size: 2.6rem; }
+.char-name { font-weight: 700; margin: 6px 0 2px; }
+.char-type { font-size: 0.8rem; color: var(--muted); }
+.char-blurb { font-size: 0.85rem; color: var(--muted); margin-top: 8px; line-height: 1.4; }
+
+.arena { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px; margin-bottom: 14px; }
+.fighter { text-align: center; }
+.fighter-top { font-size: 3.4rem; line-height: 1.1; }
+.fighter-name { font-weight: 700; margin: 4px 0 8px; font-size: 0.95rem; }
+.vs { font-size: 1.6rem; opacity: 0.7; }
+
+.hp { height: 12px; background: #0c1119; border: 1px solid var(--border); border-radius: 999px; overflow: hidden; }
+.hp > span { display: block; height: 100%; transition: width 0.35s ease; }
+.hp-num { font-size: 0.78rem; color: var(--muted); margin-top: 3px; font-family: var(--mono); }
+
+.battle-log {
+  background: var(--panel-2);
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin: 6px 0 14px;
+  min-height: 44px;
+  line-height: 1.5;
+}
+
+.moves { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+.move {
+  text-align: left;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--ink);
+  border-radius: 10px;
+  padding: 11px 14px;
+  cursor: pointer;
+  transition: transform 0.06s, border-color 0.15s;
+}
+.move:hover:not(:disabled) { border-color: var(--accent); transform: translateY(-1px); }
+.move:disabled { cursor: default; }
+.move.locked { opacity: 0.45; }
+.move-name { font-weight: 700; }
+.move-name .tier { color: var(--accent-2); font-size: 0.8rem; margin-left: 4px; }
+.move-meta { font-size: 0.8rem; color: var(--muted); margin: 3px 0; font-family: var(--mono); }
+.move-desc { font-size: 0.8rem; color: var(--muted); }
+
+/* ===================== Save / title panel ===================== */
+.save-panel {
+  background: var(--panel-2);
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin: 14px auto;
+  max-width: 420px;
+}
+.save-sub { font-size: 0.82rem; color: var(--muted); margin-top: 4px; }
+.title-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin: 8px 0; }
+.title-actions .primary { flex: 0 1 auto; }
+
+/* ===================== Overworld / pixel stage ===================== */
+.hidden { display: none !important; }
+#stage { position: relative; width: 480px; max-width: 96vw; margin: 0 auto; }
+#game {
+  display: block;
+  width: 480px;
+  max-width: 96vw;
+  height: auto;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  border: 3px solid var(--border);
+  border-radius: 10px;
+  background: #3b6b35;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+}
+#dialogue {
+  position: absolute;
+  left: 10px; right: 10px; bottom: 10px;
+  background: rgba(12,17,25,0.94);
+  border: 2px solid var(--accent);
+  border-radius: 10px;
+  padding: 12px 14px;
+  color: var(--ink);
+  line-height: 1.5;
+}
+.dlg-text { font-size: 0.98rem; }
+.dlg-prompt { text-align: right; color: var(--accent); font-size: 0.8rem; margin-top: 6px; }
+#controls-hint {
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.8rem;
+  margin-top: 8px;
+  font-family: var(--mono);
+}
+
+/* ===================== Dialogue choices ===================== */
+.dlg-choices { display: grid; gap: 6px; margin-top: 10px; }
+.dlg-choice {
+  text-align: left;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--ink);
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.92rem;
+}
+.dlg-choice:hover { border-color: var(--accent); background: rgba(79,209,197,0.12); }
+
+/* ===================== Fade transition + audio button + card entrance ===================== */
+#fade {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.23s ease;
+  z-index: 100;
+}
+#fade.on { opacity: 1; }
+
+header { position: relative; }
+#audiobtn {
+  position: absolute;
+  top: 10px; right: 12px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--ink);
+  font-size: 1.1rem;
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+#audiobtn:hover { border-color: var(--accent); }
+
+.card { animation: cardIn 0.22s ease; }
+@keyframes cardIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* ===================== Party bar ===================== */
+#partybar {
+  text-align: center;
+  margin-top: 8px;
+  color: var(--ink);
+  font-size: 0.9rem;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+.party-emo { font-size: 1.15rem; cursor: help; }
+.party-count { color: var(--muted); font-size: 0.8rem; }

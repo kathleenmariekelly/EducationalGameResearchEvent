@@ -1,0 +1,20 @@
+// glossary.js — quick-reference card players can open any time (even mid-fight).
+export const GLOSSARY = [
+  { term: "Variable", def: "A named box in memory that stores a value.", syntax: "int hp = 42;" },
+  { term: "Address", def: "The location (a number) where a variable lives in memory.", syntax: "0x1004" },
+  { term: "Pointer", def: "A variable that stores the ADDRESS of another variable.", syntax: "int* p = &hp;" },
+  { term: "Address-of  &", def: "Gives the address of a variable.", syntax: "&hp   // address of hp" },
+  { term: "Dereference  *", def: "Follows a pointer to read or write the value it points to.", syntax: "*p = 100;   // write via p" },
+  { term: "Reference  int&", def: "An alias: a second NAME for an existing variable. Can't be null or reseated.", syntax: "int& r = hp;" },
+  { term: "Stack", def: "Automatic memory for locals; freed when they go out of scope.", syntax: "int x = 5;   // on the stack" },
+  { term: "Heap", def: "Manually-managed memory that lives until you free it.", syntax: "int* p = new int(7);" },
+  { term: "new", def: "Allocates memory on the heap and returns its address.", syntax: "int* p = new int(7);" },
+  { term: "delete", def: "Frees heap memory made with new (use delete[] for new[]).", syntax: "delete p;" },
+  { term: "Null pointer", def: "A pointer that points to nothing. Dereferencing it crashes.", syntax: "int* p = nullptr;" },
+  { term: "Dangling pointer", def: "A pointer to memory that has already been freed (use-after-free).", syntax: "delete p; *p = 1;  // BUG" },
+  { term: "Memory leak", def: "Heap memory never freed because its last pointer was lost.", syntax: "new int;   // no delete = leak" },
+  { term: "Double free", def: "Deleting the same heap block twice (undefined behavior).", syntax: "delete p; delete p;  // BUG" },
+  { term: "Pointer arithmetic", def: "Adding N to a pointer moves it N ELEMENTS (not bytes).", syntax: "*(p + 2)  ==  arr[2]" },
+  { term: "unique_ptr", def: "Smart pointer with a single owner; auto-deletes at scope end.", syntax: "auto p = make_unique<int>(7);" },
+  { term: "shared_ptr", def: "Smart pointer with shared ownership via reference counting.", syntax: "auto a = make_shared<int>(9);" },
+];

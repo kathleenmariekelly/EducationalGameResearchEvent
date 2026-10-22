@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CmdLine Rescue — A Networking Adventure</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="game-wrap">
+    <header id="hud">
+      <div class="hud-left">
+        <span class="prompt">root@rescue:~$</span>
+        <span id="level-name">Booting...</span>
+      </div>
+      <div class="hud-right">
+        <span id="hearts">♥♥♥</span>
+        <span id="cards">🆔 0/3</span>
+        <span id="progress">Level 0 / 4</span>
+        <span id="score">SCORE 0</span>
+        <span id="hi">HI 0</span>
+      </div>
+    </header>
+
+    <canvas id="scene" width="1280" height="720"></canvas>
+    <div id="glitch"></div>
+    <div id="damage"></div>
+    <div id="chase-banner" class="hidden">⚠ HOSTILE PROCESS DETECTED — reach a checkpoint & answer to purge it!</div>
+    <div id="stamina"><span id="stamina-fill"></span></div>
+    <div id="toast" class="hidden"></div>
+    <div id="cheatsheet" class="hidden">
+      <div id="cheat-box">
+        <h2>🆔 Cheat Sheet</h2>
+        <div id="cheat-content"></div>
+        <button id="cheat-close">Close (H)</button>
+      </div>
+    </div>
+    <div id="crosshair">+</div>
+    <div id="lock-hint">CLICK TO ENTER — mouse to look, WASD to move</div>
+    <div id="jumpscare" class="hidden">
+      <pre id="scare-face">    .-"""""""-.
+   /  _     _  \
+  |  (o)   (o)  |
+  |     ___     |
+   \   /VVV\   /
+    \  \VVV/  /
+     '-.___.-'
+   W H O ' S   T H E R E ?</pre>
+    </div>
+
+    <div id="ticker">
+      <span id="ticker-text">Use WASD / Arrow keys to move. Reach the glowing checkpoints.</span>
+    </div>
+
+    <!-- Puzzle popup -->
+    <div id="overlay" class="hidden">
+      <div id="puzzle">
+        <div id="puzzle-topic"></div>
+        <div id="boss-bar" class="hidden"><span id="boss-fill"></span></div>
+        <h2 id="puzzle-title"></h2>
+        <p id="puzzle-question"></p>
+        <div id="puzzle-choices"></div>
+        <div id="puzzle-input-wrap" class="hidden">
+          <span class="mini-prompt">$</span>
+          <input id="puzzle-input" type="text" autocomplete="off" spellcheck="false" />
+        </div>
+        <div id="puzzle-feedback"></div>
+        <div class="puzzle-actions">
+          <button id="puzzle-submit" class="hidden">Run &raquo;</button>
+          <button id="puzzle-cancel" class="btn-secondary">Back out (Esc)</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pause menu -->
+    <div id="pause" class="hidden">
+      <div id="pause-box">
+        <h2>‖ PAUSED</h2>
+        <p class="controls">
+          <b>WASD / Arrows</b> — move &nbsp; <b>Shift</b> — sprint (stamina)<br />
+          <b>Mouse</b> — look (click scene to capture)<br />
+          <b>Esc</b> — pause / back out of a checkpoint<br />
+          Track the signal on your device. Grab ♥ packs to heal and 🆔 recap cards to learn &amp; reveal the map. Dodge the rogue process.
+        </p>
+        <button id="resume-btn">Resume</button>
+        <button id="restart-btn" class="btn-secondary">Restart level</button>
+      </div>
+    </div>
+
+    <!-- Story / level transition -->
+    <div id="story" class="hidden">
+      <div id="story-box">
+        <pre id="story-art"></pre>
+        <h2 id="story-title"></h2>
+        <p id="story-text"></p>
+        <button id="story-btn">Continue</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="src/three.min.js"></script>
+  <script src="src/levels.js"></script>
+  <script src="src/game3d.js"></script>
+</body>
+</html>

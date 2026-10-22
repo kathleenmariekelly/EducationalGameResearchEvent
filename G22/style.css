@@ -1,0 +1,18 @@
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #14161a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  font-family: system-ui, sans-serif;
+}
+
+#game-container {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+canvas {
+  display: block;
+}

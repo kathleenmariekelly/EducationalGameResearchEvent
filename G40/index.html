@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BashQuest — Learn Linux Commands</title>
+<style>
+  :root {
+    --bg: #1a1b26;
+    --panel: #24283b;
+    --term: #16161e;
+    --green: #9ece6a;
+    --red: #f7768e;
+    --yellow: #e0af68;
+    --blue: #7aa2f7;
+    --purple: #bb9af7;
+    --text: #c0caf5;
+    --dim: #565f89;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    padding: 20px;
+  }
+  .wrap { max-width: 820px; margin: 0 auto; }
+  header {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  header h1 { color: var(--green); font-size: 2rem; }
+  header h1 .prompt { color: var(--blue); }
+  header p { color: var(--dim); }
+
+  .streak-badge {
+    display: inline-block;
+    margin-top: 8px;
+    padding: 6px 16px;
+    border-radius: 20px;
+    background: var(--panel);
+    font-weight: bold;
+    font-family: 'Consolas', monospace;
+    transition: transform 0.2s;
+  }
+  .streak-badge.active {
+    background: linear-gradient(90deg, #ff9800, #f7768e);
+    color: #fff;
+  }
+  .streak-badge.pop { transform: scale(1.25); }
+
+  .progress-bar {
+    background: var(--panel);
+    border-radius: 20px;
+    height: 12px;
+    margin: 16px 0;
+    overflow: hidden;
+  }
+  .progress-fill {
+    background: linear-gradient(90deg, var(--green), var(--blue));
+    height: 100%;
+    width: 0;
+    transition: width 0.4s ease;
+  }
+
+  .card {
+    background: var(--panel);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  }
+  .lesson h2 {
+    color: var(--purple);
+    margin-bottom: 8px;
+    font-family: 'Consolas', monospace;
+  }
+  .lesson .tagline { color: var(--yellow); margin-bottom: 14px; font-style: italic; }
+  .lesson p { margin-bottom: 12px; }
+  .flags { list-style: none; margin: 12px 0; }
+  .flags li {
+    padding: 8px 12px;
+    background: var(--term);
+    border-radius: 6px;
+    margin-bottom: 6px;
+    font-family: 'Consolas', monospace;
+  }
+  .flags code { color: var(--green); font-weight: bold; }
+  .example-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    color: var(--blue);
+    background: transparent;
+    border: 1px dashed var(--blue);
+    border-radius: 6px;
+    padding: 8px 14px;
+    font-size: 0.95rem;
+    font-family: inherit;
+    margin: 12px 0 4px;
+    transition: background 0.2s;
+  }
+  .example-toggle:hover { background: rgba(122,162,247,0.12); }
+  .example {
+    background: var(--term);
+    border-left: 3px solid var(--blue);
+    padding: 10px 14px;
+    border-radius: 4px;
+    font-family: 'Consolas', monospace;
+    margin: 8px 0 4px;
+    color: var(--green);
+    display: none;
+  }
+  .example.show { display: block; }
+  .example .example-label {
+    display: block;
+    color: var(--dim);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+  }
+  .example .example-note {
+    display: block;
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 0.9rem;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--dim);
+  }
+  .example .example-note::before { content: "→ What it does: "; color: var(--yellow); }
+
+  .challenge {
+    background: var(--term);
+    border: 1px solid var(--dim);
+    border-radius: 8px;
+    padding: 16px;
+    margin-top: 16px;
+  }
+  .challenge .task {
+    color: var(--yellow);
+    margin-bottom: 12px;
+  }
+  .challenge .task::before { content: "🎯 Task: "; }
+
+  .terminal {
+    font-family: 'Consolas', 'Courier New', monospace;
+    background: var(--term);
+    border-radius: 8px;
+    padding: 14px;
+  }
+  .term-line { display: flex; align-items: center; }
+  .term-prompt { color: var(--green); margin-right: 8px; white-space: nowrap; }
+  .term-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 1rem;
+    outline: none;
+  }
+  .feedback {
+    margin-top: 12px;
+    padding: 12px;
+    border-radius: 6px;
+    display: none;
+  }
+  .feedback.show { display: block; }
+  .feedback.correct { background: rgba(158,206,106,0.15); border: 1px solid var(--green); color: var(--green); }
+  .feedback.wrong { background: rgba(247,118,142,0.15); border: 1px solid var(--red); color: var(--red); }
+  .feedback .explain { color: var(--text); margin-top: 6px; }
+
+  .btn {
+    background: var(--blue);
+    color: var(--bg);
+    border: none;
+    padding: 10px 22px;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 14px;
+    transition: transform 0.1s, opacity 0.2s;
+  }
+  .btn:hover { transform: translateY(-2px); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn.secondary { background: var(--dim); color: var(--text); }
+
+  .level-nav {
+    display: flex;
+    gap: 10px;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+  }
+  .level-nav .btn { margin-top: 0; }
+  .review-banner {
+    background: rgba(187,154,247,0.15);
+    border: 1px solid var(--purple);
+    color: var(--purple);
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 14px;
+    font-size: 0.92rem;
+  }
+
+  .hint { color: var(--dim); font-size: 0.9rem; margin-top: 10px; cursor: pointer; }
+  .hint:hover { color: var(--yellow); }
+
+  /* Quiz styles */
+  .quiz-q { font-weight: 600; margin: 6px 0 14px; }
+  .quiz-opts { list-style: none; }
+  .quiz-opt {
+    padding: 10px 14px;
+    margin-bottom: 8px;
+    background: var(--term);
+    border: 1px solid var(--dim);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .quiz-opt:hover { border-color: var(--blue); }
+  .quiz-opt.selected { border-color: var(--blue); background: rgba(122,162,247,0.15); }
+  .quiz-letter { font-weight: bold; color: var(--blue); margin-right: 8px; }
+  .quiz-opt.correct-opt { border-color: var(--green); background: rgba(158,206,106,0.18); }
+  .quiz-opt.wrong-opt { border-color: var(--red); background: rgba(247,118,142,0.18); }
+  .quiz-explain {
+    display: none;
+    margin-top: 10px;
+    padding: 10px 12px;
+    border-radius: 6px;
+    background: rgba(0,0,0,0.2);
+    font-size: 0.92rem;
+    color: var(--text);
+  }
+  .quiz-explain.show { display: block; }
+
+  .end-screen { text-align: center; }
+  .end-screen h2 { color: var(--green); font-size: 1.6rem; }
+  .score-big { font-size: 3rem; color: var(--yellow); margin: 16px 0; }
+  .level-tag { color: var(--dim); font-size: 0.9rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1><span class="prompt">$</span> BashQuest</h1>
+    <p>Learn Linux commands the way pros do — by using them.</p>
+    <div class="streak-badge" id="streakBadge">Streak: 0</div>
+  </header>
+
+  <div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
+
+  <div id="game"></div>
+</div>
+
+<script>
+// ---- Lesson + Challenge data ----
+const LEVELS = [
+  {
+    cmd: "pwd & ls",
+    tagline: "Figure out where you are and what's around you.",
+    intro: "Every Linux session starts in some directory. <code>pwd</code> (print working directory) tells you exactly where you are. <code>ls</code> (list) shows the files and folders in your current location.",
+    flags: [
+      ["pwd", "print working directory — shows the full path of where you are"],
+      ["ls", "list the visible files and folders here (no flags)"],
+      ["ls -l", "long format — shows permissions, owner, size, and date"],
+      ["ls -a", "all — includes hidden files (those starting with a dot)"],
+      ["ls -la", "combine both: long format AND hidden files"]
+    ],
+    example: "$ ls -la",
+    exampleNote: "This lists every item in the current folder — including hidden dotfiles — in detailed long format showing permissions, size, and dates.",
+    task: "List everything in this folder, including hidden files, in long format.",
+    cwd: "~/project",
+    accept: ["ls -la", "ls -al", "ls -a -l", "ls -l -a"],
+    explain: "<code>ls -la</code> combines <code>-l</code> (long listing) and <code>-a</code> (all files, including hidden dotfiles like <code>.gitignore</code>). Order of the letters doesn't matter.",
+    hint: "Combine the flags for 'long' and 'all' after ls.",
+    practice: [
+      { task: "Just print your current location (the working directory).", cwd: "~/project", accept: ["pwd"], explain: "<code>pwd</code> prints the full path of the directory you're currently in.", hint: "Three letters: 'print working directory'." },
+      { task: "List the files here in plain form (no flags).", cwd: "~/project", accept: ["ls"], explain: "Plain <code>ls</code> lists visible files and folders in the current directory.", hint: "Just the two-letter list command by itself." }
+    ]
+  },
+  {
+    cmd: "cd",
+    tagline: "Move around the filesystem.",
+    intro: "<code>cd</code> (change directory) moves you into another folder. Give it a path to move to. Special shortcuts make navigation fast.",
+    flags: [
+      ["cd folder", "move into a subfolder"],
+      ["cd ..", "move UP one level to the parent folder"],
+      ["cd ~", "jump to your home directory"],
+      ["cd /", "jump to the root of the filesystem"]
+    ],
+    example: "$ cd ..",
+    exampleNote: "This moves you up one level to the parent directory — e.g. from ~/project/src back to ~/project.",
+    task: "You're in ~/project/src and want to move up to ~/project. Go up one level.",
+    cwd: "~/project/src",
+    accept: ["cd ..", "cd .."],
+    explain: "<code>cd ..</code> moves up to the parent directory. The <code>..</code> always means 'one level up', while a single <code>.</code> means 'the current directory'.",
+    hint: "Two dots mean 'the folder above me'.",
+    practice: [
+      { task: "Jump straight to your home directory.", cwd: "~/project/src", accept: ["cd ~", "cd"], explain: "<code>cd ~</code> (or just <code>cd</code> alone) takes you home no matter where you are.", hint: "The ~ symbol means 'home'." },
+      { task: "Move into a subfolder named 'tests'.", cwd: "~/project", accept: ["cd tests", "cd ./tests"], explain: "<code>cd tests</code> moves you into the tests subfolder.", hint: "Use cd followed by the folder name." }
+    ]
+  },
+  {
+    cmd: "mkdir & touch",
+    tagline: "Create folders and empty files.",
+    intro: "<code>mkdir</code> (make directory) creates a new folder. <code>touch</code> creates a new empty file (or updates a file's timestamp if it already exists).",
+    flags: [
+      ["mkdir name", "create a folder called 'name'"],
+      ["mkdir -p a/b/c", "create nested folders, making parents as needed"],
+      ["touch file.txt", "create an empty file called file.txt"]
+    ],
+    example: "$ mkdir images",
+    exampleNote: "This creates a brand-new empty folder called 'images' inside the current directory.",
+    task: "Create a new folder named 'assets'.",
+    cwd: "~/project",
+    accept: ["mkdir assets", "mkdir ./assets"],
+    explain: "<code>mkdir assets</code> makes a directory named assets. Add <code>-p</code> when you need to create a whole chain of nested folders at once.",
+    hint: "The 'make directory' command followed by the folder name.",
+    practice: [
+      { task: "Create an empty file called 'notes.txt'.", cwd: "~/project", accept: ["touch notes.txt", "touch ./notes.txt"], explain: "<code>touch notes.txt</code> creates a new empty file (or updates its timestamp if it exists).", hint: "Use the 'touch' command with the filename." },
+      { task: "Create nested folders src/components in one command.", cwd: "~/project", accept: ["mkdir -p src/components", "mkdir -p ./src/components"], explain: "<code>mkdir -p src/components</code> makes the whole chain, creating src first if needed.", hint: "You need the -p flag to build nested folders at once." }
+    ]
+  },
+  {
+    cmd: "cp & mv",
+    tagline: "Copy and move (or rename) files.",
+    intro: "<code>cp</code> copies a file, leaving the original in place. <code>mv</code> moves a file — and since 'moving' a file to a new name is the same as renaming, <code>mv</code> is also how you rename things.",
+    flags: [
+      ["cp a.txt b.txt", "copy a.txt to a new file b.txt"],
+      ["cp -r folder dest", "copy a whole folder (recursive)"],
+      ["mv a.txt archive/", "move a.txt into the archive folder"],
+      ["mv old.txt new.txt", "rename old.txt to new.txt"]
+    ],
+    example: "$ cp notes.txt backup.txt",
+    exampleNote: "This makes a copy of notes.txt named backup.txt. The original notes.txt stays exactly where it was.",
+    task: "Rename the file 'draft.txt' to 'final.txt'.",
+    cwd: "~/project",
+    accept: ["mv draft.txt final.txt"],
+    explain: "<code>mv draft.txt final.txt</code> renames the file. There's no separate 'rename' command in Linux — moving a file to a new name IS renaming it.",
+    hint: "Use the 'move' command with the old name then the new name.",
+    practice: [
+      { task: "Copy 'config.txt' to a backup named 'config.bak'.", cwd: "~/project", accept: ["cp config.txt config.bak"], explain: "<code>cp config.txt config.bak</code> duplicates the file; the original stays put.", hint: "Use cp with the source then the new name." },
+      { task: "Move 'report.pdf' into the 'archive' folder.", cwd: "~/project", accept: ["mv report.pdf archive/", "mv report.pdf archive", "mv report.pdf ./archive/", "mv report.pdf ./archive"], explain: "<code>mv report.pdf archive/</code> relocates the file into the archive folder.", hint: "Use mv with the file then the destination folder." }
+    ]
+  },
+  {
+    cmd: "rm",
+    tagline: "Delete files and folders — carefully!",
+    intro: "<code>rm</code> (remove) deletes files. There is NO recycle bin — deletions are permanent. Flags make it more powerful and more dangerous.",
+    flags: [
+      ["rm file.txt", "delete a single file"],
+      ["rm -r folder", "delete a folder and everything inside it (recursive)"],
+      ["rm -f file", "force delete without prompting"],
+      ["rm -rf folder", "⚠️ force-delete a folder and all contents — use with extreme care!"]
+    ],
+    example: "$ rm temp.log",
+    exampleNote: "This permanently deletes the single file temp.log — there's no recycle bin, so it's gone for good.",
+    task: "Delete a folder named 'cache' and everything inside it (recursively).",
+    cwd: "~/project",
+    accept: ["rm -r cache", "rm -rf cache", "rm -fr cache", "rm -r ./cache", "rm -rf ./cache"],
+    explain: "<code>rm -r cache</code> removes the folder and its contents. Adding <code>-f</code> (force) skips confirmation prompts. Real-world tip: double-check the path before running <code>rm -rf</code> — there's no undo!",
+    hint: "You need the 'recursive' flag to delete a folder and its contents.",
+    practice: [
+      { task: "Delete a single file named 'old.log'.", cwd: "~/project", accept: ["rm old.log", "rm ./old.log"], explain: "<code>rm old.log</code> deletes just that one file.", hint: "Plain rm with the filename removes one file." },
+      { task: "Force-delete the file 'locked.tmp' without any prompt.", cwd: "~/project", accept: ["rm -f locked.tmp", "rm -f ./locked.tmp"], explain: "<code>rm -f locked.tmp</code> forces removal, skipping confirmation prompts.", hint: "The -f flag means 'force'." }
+    ]
+  },
+  {
+    cmd: "cat, head & tail",
+    tagline: "Read the contents of files.",
+    intro: "<code>cat</code> prints a whole file to the screen. For big files, <code>head</code> shows the top and <code>tail</code> shows the bottom — great for log files.",
+    flags: [
+      ["cat file.txt", "print the entire file"],
+      ["head file.txt", "show the first 10 lines"],
+      ["tail file.txt", "show the last 10 lines"],
+      ["head -n 5 file.txt", "show a specific number of lines (here, 5)"]
+    ],
+    example: "$ tail -n 20 server.log",
+    exampleNote: "This shows the last 20 lines of server.log — handy for checking the most recent entries in a log file.",
+    task: "Show only the first 5 lines of 'data.csv'.",
+    cwd: "~/project",
+    accept: ["head -n 5 data.csv", "head -5 data.csv", "head -n5 data.csv"],
+    explain: "<code>head -n 5 data.csv</code> prints the first 5 lines. The <code>-n</code> flag sets how many lines. <code>tail -n 5</code> would show the last 5 instead.",
+    hint: "Use 'head' with the -n flag to limit the number of lines.",
+    practice: [
+      { task: "Print the entire contents of 'readme.md'.", cwd: "~/project", accept: ["cat readme.md", "cat ./readme.md"], explain: "<code>cat readme.md</code> dumps the whole file to the screen.", hint: "Use the 'cat' command with the filename." },
+      { task: "Show the last 10 lines of 'server.log'.", cwd: "~/project", accept: ["tail server.log", "tail -n 10 server.log", "tail -10 server.log", "tail ./server.log"], explain: "<code>tail server.log</code> shows the last 10 lines by default — great for recent log entries.", hint: "Use 'tail' — it defaults to the last 10 lines." }
+    ]
+  },
+  {
+    cmd: "Pipes & Redirection",
+    tagline: "Chain commands and save output.",
+    intro: "The pipe <code>|</code> sends one command's output into another as input. Redirection <code>&gt;</code> saves output to a file. These are what make the shell truly powerful.",
+    flags: [
+      ["cmd1 | cmd2", "pipe: feed output of cmd1 into cmd2"],
+      ["cmd &gt; file", "overwrite file with command's output"],
+      ["cmd &gt;&gt; file", "append command's output to the end of file"],
+      ["ls | wc -l", "count how many items ls printed"]
+    ],
+    example: "$ cat access.log | grep error",
+    exampleNote: "This reads access.log and pipes its contents into grep, which filters and shows only the lines containing the word 'error'.",
+    task: "Save the output of 'ls' into a file named 'files.txt' (overwrite it).",
+    cwd: "~/project",
+    accept: ["ls > files.txt", "ls >files.txt"],
+    explain: "<code>ls &gt; files.txt</code> redirects the listing into files.txt, replacing its contents. Use <code>&gt;&gt;</code> instead if you want to add to the file without erasing it.",
+    hint: "Run ls, then use a single > to send its output into the file.",
+    practice: [
+      { task: "Append the output of 'ls' to the end of 'files.txt' (don't overwrite it).", cwd: "~/project", accept: ["ls >> files.txt", "ls >>files.txt"], explain: "<code>ls &gt;&gt; files.txt</code> adds the listing to the end of the file, keeping whatever was already there. Compare with a single <code>&gt;</code>, which would erase and replace the file.", hint: "Use the double >> to append instead of overwrite." },
+      { task: "Count how many lines are in 'names.txt' using a pipe into 'wc -l'.", cwd: "~/project", accept: ["cat names.txt | wc -l"], explain: "<code>cat names.txt | wc -l</code> feeds the file into wc, which counts the lines.", hint: "cat the file, then pipe | it into 'wc -l'." }
+    ]
+  },
+  {
+    cmd: "grep",
+    tagline: "Search inside files for text.",
+    intro: "<code>grep</code> searches through text and prints only the lines that match a pattern. Give it the pattern first, then the file (or pipe text into it). It's the go-to tool for finding a needle in a haystack.",
+    flags: [
+      ["grep word file", "print lines in 'file' containing 'word'"],
+      ["grep -i word file", "case-insensitive — matches Word, WORD, word"],
+      ["grep -r word folder", "search recursively through every file in a folder"],
+      ["grep -n word file", "show the line number of each match"],
+      ["grep -c word file", "count how many lines match"]
+    ],
+    example: "$ grep -i error server.log",
+    exampleNote: "This prints every line of server.log that contains 'error', ignoring case — so ERROR, Error, and error all match.",
+    task: "Find every line in 'app.log' that contains the word 'error' (case doesn't matter).",
+    cwd: "~/project",
+    accept: ["grep -i error app.log", "grep -i 'error' app.log", "grep -i \"error\" app.log"],
+    explain: "<code>grep -i error app.log</code> prints matching lines regardless of case. The <code>-i</code> flag makes the search case-insensitive, so Error and ERROR match too.",
+    hint: "Use grep with the -i flag, then the word, then the filename.",
+    practice: [
+      { task: "Print every line in 'names.txt' that contains 'Sam' (exact case).", cwd: "~/project", accept: ["grep Sam names.txt", "grep 'Sam' names.txt", "grep \"Sam\" names.txt"], explain: "<code>grep Sam names.txt</code> prints only the lines that contain 'Sam'.", hint: "Just grep followed by the word and the filename." },
+      { task: "Count how many lines in 'access.log' contain '404'.", cwd: "~/project", accept: ["grep -c 404 access.log", "grep -c '404' access.log", "grep -c \"404\" access.log"], explain: "<code>grep -c 404 access.log</code> counts matching lines instead of printing them.", hint: "The -c flag counts matches instead of showing them." },
+      { task: "Search recursively through the 'src' folder for the word 'TODO'.", cwd: "~/project", accept: ["grep -r TODO src", "grep -r TODO src/", "grep -r 'TODO' src", "grep -r \"TODO\" src", "grep -r TODO ./src"], explain: "<code>grep -r TODO src</code> searches every file inside src (and its subfolders) for 'TODO'.", hint: "The -r flag makes grep search through a whole folder." }
+    ]
+  }
+];
+
+// ---- Quiz questions (shown after the game) ----
+// correct = index (0-3) of the right option.
+const QUIZ = [
+  {
+    q: "You are in <code>~/project/src/utils</code>. You run <code>cd ../..</code>. What is your new working directory?",
+    opts: ["~/project/src", "~/project", "~", "/ (the filesystem root)"],
+    correct: 1,
+    why: "<code>cd ../..</code> goes up two levels: utils → src → project."
+  },
+  {
+    q: "A file <code>report.txt</code> already has 50 lines. You run <code>ls &gt; report.txt</code>. What's in the file afterward?",
+    opts: ["The 50 lines, then the ls output", "Only the ls output — the 50 lines are gone", "Unchanged; ls prints to screen", "An error, because the file exists"],
+    correct: 1,
+    why: "A single <code>&gt;</code> overwrites the file. <code>&gt;&gt;</code> would have appended instead."
+  },
+  {
+    q: "You want to copy a folder <code>assets</code> (with subfolders) into a new folder <code>backup</code>. Which works?",
+    opts: ["cp assets backup", "cp -r assets backup", "mv assets backup", "mkdir backup assets"],
+    correct: 1,
+    why: "<code>cp -r</code> copies a folder and its contents recursively. Plain cp fails on directories."
+  },
+  {
+    q: "Your folder contains: <code>notes.txt&nbsp;&nbsp;.config&nbsp;&nbsp;photos/&nbsp;&nbsp;.hidden.log</code>. You run plain <code>ls</code>. How many items appear?",
+    opts: ["4", "2", "3", "0"],
+    correct: 1,
+    why: "Plain ls hides dotfiles, so only notes.txt and photos/ show. <code>ls -a</code> would show all 4."
+  },
+  {
+    q: "Which command renames <code>old_notes.txt</code> to <code>notes.txt</code>?",
+    opts: ["rename old_notes.txt notes.txt", "cp old_notes.txt notes.txt", "mv old_notes.txt notes.txt", "touch notes.txt old_notes.txt"],
+    correct: 2,
+    why: "<code>mv</code> renames — moving a file to a new name IS renaming. cp would leave two files."
+  },
+  {
+    q: "You have a 10,000-line <code>server.log</code> and want the <strong>most recent</strong> 15 entries (at the bottom). Which is correct?",
+    opts: ["head -n 15 server.log", "tail -n 15 server.log", "cat -n 15 server.log", "tail -n 15 &gt; server.log"],
+    correct: 1,
+    why: "<code>tail</code> shows the END of a file; <code>-n 15</code> limits to 15 lines. Option D would erase the file!"
+  },
+  {
+    q: "None of <code>data/2024/january</code> exist yet, and <code>mkdir data/2024/january</code> errors. What single command works?",
+    opts: ["mkdir -r data/2024/january", "mkdir -p data/2024/january", "touch data/2024/january", "mkdir -f data/2024/january"],
+    correct: 1,
+    why: "<code>mkdir -p</code> creates parent directories as needed."
+  },
+  {
+    q: "Which command is the <strong>most dangerous</strong> — permanently deleting a folder <code>project</code> and all its contents, with no confirmation?",
+    opts: ["rm project", "rm -r project", "rm -f project", "rm -rf project"],
+    correct: 3,
+    why: "<code>rm -rf</code> combines -r (recursive) and -f (force, no prompt) — the most destructive."
+  },
+  {
+    q: "You run <code>ls | wc -l</code> in a folder with 3 visible files and 1 subfolder. What prints?",
+    opts: ["The 4 names, one per line", "The number 4", "The number 3", "The total size of all files"],
+    correct: 1,
+    why: "ls lists 4 items, one per line; wc -l counts the lines and prints 4."
+  },
+  {
+    q: "You run <code>echo \"line one\" &gt; log.txt</code>, then <code>echo \"line two\" &gt;&gt; log.txt</code>, then <code>cat log.txt</code>. What prints?",
+    opts: ["line two", "line one", "line one<br>line two", "Nothing — they cancel out"],
+    correct: 2,
+    why: "<code>&gt;</code> writes 'line one'; <code>&gt;&gt;</code> appends 'line two' without erasing. cat shows both."
+  },
+  {
+    q: "You want to find every line in <code>server.log</code> that mentions 'error' — matching <code>Error</code>, <code>ERROR</code>, and <code>error</code> alike. Which command works?",
+    opts: ["grep error server.log", "grep -i error server.log", "grep -r error server.log", "grep -c error server.log"],
+    correct: 1,
+    why: "<code>-i</code> makes grep case-insensitive, so Error, ERROR, and error all match. Plain grep would miss the capitalized ones."
+  }
+];
+
+// ---- Game state ----
+let current = 0;
+let maxReached = 0;   // furthest level reached through real play (their true position)
+let quizAnswers = [];   // student's selected option index per question (null = unanswered)
+let score = 0;
+let answered = false;
+let attempts = 0;
+let streak = 0;
+let bestStreak = 0;
+let currentChallenge = null;   // the task currently being asked (main or a practice one)
+let isPractice = false;        // true when the student is doing an optional practice round
+let practiceIndex = 0;         // which practice item comes next for this level
+
+const gameEl = document.getElementById('game');
+const progressEl = document.getElementById('progress');
+const streakBadge = document.getElementById('streakBadge');
+
+function updateStreakBadge(pop) {
+  if (streak > 0) {
+    const fire = '🔥'.repeat(Math.min(streak, 5));
+    streakBadge.textContent = `Streak: ${streak} ${fire}`;
+    streakBadge.classList.add('active');
+  } else {
+    streakBadge.textContent = 'Streak: 0';
+    streakBadge.classList.remove('active');
+  }
+  if (pop) {
+    streakBadge.classList.add('pop');
+    setTimeout(() => streakBadge.classList.remove('pop'), 200);
+  }
+}
+
+function normalize(s) {
+  return s.trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+// True when the player has navigated BACK to an earlier level to practice.
+// In review mode, nothing affects score or streak, and they can jump forward again.
+function isReview() {
+  return current < maxReached;
+}
+
+function renderLevel() {
+  answered = false;
+  attempts = 0;
+  const lv = LEVELS[current];
+  progressEl.style.width = (current / LEVELS.length * 100) + '%';
+
+  const flagsHtml = lv.flags.map(f =>
+    `<li><code>${f[0]}</code> — ${f[1]}</li>`
+  ).join('');
+
+  const review = isReview();
+  const navHtml = `
+    <div class="level-nav">
+      ${current > 0 ? '<button class="btn secondary" id="backBtn">◀ Back a level</button>' : '<span></span>'}
+      ${review ? `<button class="btn" id="resumeBtn">Resume Level ${maxReached + 1} ▶▶</button>` : ''}
+    </div>`;
+  const reviewBanner = review
+    ? '<div class="review-banner">🔁 Review mode — practice this earlier level freely. Your score and streak are safe.</div>'
+    : '';
+
+  gameEl.innerHTML = `
+    <div class="card lesson">
+      ${navHtml}
+      ${reviewBanner}
+      <div class="level-tag">Level ${current + 1} of ${LEVELS.length}</div>
+      <h2>${lv.cmd}</h2>
+      <div class="tagline">${lv.tagline}</div>
+      <p>${lv.intro}</p>
+      <ul class="flags">${flagsHtml}</ul>
+      <button class="example-toggle" id="exampleToggle">👁 See an example</button>
+      <div class="example" id="exampleBox"><span class="example-label">Example — this is a demo, not the answer</span>${lv.example}<span class="example-note">${lv.exampleNote}</span></div>
+
+      <button class="btn" id="readyBtn" disabled>Reading lesson…</button>
+
+      <div class="challenge" id="challengeBox" style="display:none;"></div>
+    </div>
+  `;
+
+  // Collapsible example: revealed only when the student clicks, so it's clearly optional.
+  const exampleToggle = document.getElementById('exampleToggle');
+  const exampleBox = document.getElementById('exampleBox');
+  exampleToggle.addEventListener('click', () => {
+    const shown = exampleBox.classList.toggle('show');
+    exampleToggle.textContent = shown ? '🙈 Hide example' : '👁 See an example';
+  });
+
+  // Navigation: go back to review an earlier level, or jump forward to resume.
+  const backBtn = document.getElementById('backBtn');
+  if (backBtn) backBtn.addEventListener('click', () => { current--; renderLevel(); });
+  const resumeBtn = document.getElementById('resumeBtn');
+  if (resumeBtn) resumeBtn.addEventListener('click', () => { current = maxReached; renderLevel(); });
+
+  // Gate: student must read the lesson and click "ready" before the challenge appears.
+  const readyBtn = document.getElementById('readyBtn');
+  const challengeBox = document.getElementById('challengeBox');
+  if (review) {
+    // They've already seen this lesson — no need to re-gate with a countdown.
+    readyBtn.disabled = false;
+    readyBtn.textContent = 'Start the practice challenge ▶';
+  } else {
+    let secs = 4;
+    readyBtn.textContent = `Reading lesson… (${secs})`;
+    const countdown = setInterval(() => {
+      secs--;
+      if (secs > 0) {
+        readyBtn.textContent = `Reading lesson… (${secs})`;
+      } else {
+        clearInterval(countdown);
+        readyBtn.disabled = false;
+        readyBtn.textContent = "I'm ready — start the challenge ▶";
+      }
+    }, 1000);
+  }
+
+  readyBtn.addEventListener('click', () => {
+    readyBtn.style.display = 'none';
+    // Start with the main challenge for this level.
+    isPractice = false;
+    practiceIndex = 0;
+    currentChallenge = { task: lv.task, cwd: lv.cwd, accept: lv.accept, explain: lv.explain, hint: lv.hint };
+    renderChallenge();
+    challengeBox.style.display = 'block';
+    challengeBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  });
+}
+
+// Builds (or rebuilds) the challenge UI inside #challengeBox from `currentChallenge`.
+function renderChallenge() {
+  answered = false;
+  attempts = 0;
+  const ch = currentChallenge;
+  const challengeBox = document.getElementById('challengeBox');
+  const badge = isPractice ? '<div class="level-tag">✏️ Practice round — no points, just reps</div>' : '';
+
+  challengeBox.innerHTML = `
+    ${badge}
+    <div class="task">${ch.task}</div>
+    <div class="terminal">
+      <div class="term-line">
+        <span class="term-prompt">student@linux:${ch.cwd}$</span>
+        <input class="term-input" id="answer" autocomplete="off" spellcheck="false" placeholder="type your command...">
+      </div>
+    </div>
+    <div class="hint" id="hintBtn">💡 Need a hint?</div>
+    <div class="feedback" id="feedback"></div>
+    <button class="btn" id="checkBtn">Run Command ▶</button>
+  `;
+
+  const input = document.getElementById('answer');
+  const checkBtn = document.getElementById('checkBtn');
+  const hintBtn = document.getElementById('hintBtn');
+
+  input.focus();
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      if (answered) advance(); else checkAnswer();
+    }
+  });
+  checkBtn.addEventListener('click', () => {
+    if (answered) advance(); else checkAnswer();
+  });
+  hintBtn.addEventListener('click', () => {
+    hintBtn.textContent = '💡 ' + ch.hint;
+  });
+}
+
+// Called by the primary button after a correct/revealed answer.
+function advance() {
+  nextLevel();
+}
+
+// Swap in the next practice challenge for the current level.
+function startPractice() {
+  const lv = LEVELS[current];
+  const p = lv.practice[practiceIndex];
+  practiceIndex++;
+  isPractice = true;
+  currentChallenge = { task: p.task, cwd: p.cwd, accept: p.accept, explain: p.explain, hint: p.hint };
+  renderChallenge();
+  document.getElementById('challengeBox').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function checkAnswer() {
+  if (answered) return;
+  const lv = LEVELS[current];
+  const ch = currentChallenge;
+  const input = document.getElementById('answer');
+  const feedback = document.getElementById('feedback');
+  const checkBtn = document.getElementById('checkBtn');
+  const val = normalize(input.value);
+
+  const accepted = ch.accept.map(normalize);
+  const isCorrect = accepted.includes(val);
+
+  feedback.classList.remove('correct', 'wrong');
+  feedback.classList.add('show');
+
+  const review = isReview();
+
+  if (isCorrect) {
+    answered = true;
+    input.disabled = true;
+    feedback.classList.add('correct');
+
+    if (isPractice || review) {
+      // Practice rounds and revisited (review) levels don't affect score or streak.
+      const label = review ? '✓ Nice — review mode, streak &amp; score are safe.' : '✓ Nailed it!';
+      feedback.innerHTML = `${label}<div class="explain">${ch.explain}</div>`;
+    } else {
+      // Award a full point only if solved on the first try; half point otherwise.
+      score += (attempts === 0) ? 1 : 0.5;
+      let streakMsg = '';
+      if (attempts === 0) {
+        streak++;
+        if (streak > bestStreak) bestStreak = streak;
+        updateStreakBadge(true);
+        if (streak >= 3) streakMsg = ` <span style="color:var(--yellow)">${streak} in a row! 🔥</span>`;
+      } else {
+        updateStreakBadge(false);
+      }
+      const firstTry = attempts === 0 ? ' 🌟' : ' (nice recovery!)';
+      feedback.innerHTML = `✓ Correct!${firstTry}${streakMsg}<div class="explain">${ch.explain}</div>`;
+    }
+    checkBtn.textContent = (current + 1 < LEVELS.length) ? 'Next Level →' : 'See Results 🏁';
+    // Offer an optional practice round if this level has any left.
+    maybeShowPracticeButton();
+  } else {
+    // Wrong: streak breaks, and let the student try again. Do NOT lock input or advance.
+    // In practice or review mode the streak is protected.
+    attempts++;
+    if (!isPractice && !review && streak > 0) { streak = 0; updateStreakBadge(true); }
+    feedback.classList.add('wrong');
+    if (attempts >= 2) {
+      // After 2 tries, offer the answer + a way to move on so nobody gets stuck.
+      feedback.innerHTML = `✗ Not quite — try again!<div class="explain">Hint: <code>${ch.accept[0]}</code><br><span style="color:var(--dim)">Type it in and run it, or click “Show Answer &amp; Continue”.</span></div>`;
+      checkBtn.textContent = 'Run Command ▶';
+      showRevealButton();
+    } else {
+      feedback.innerHTML = `✗ Not quite — give it another shot!<div class="explain" style="color:var(--dim)">Tip: check your command and flags, then run it again. Stuck? Use the hint below.</div>`;
+    }
+    input.focus();
+    input.select();
+  }
+}
+
+function showRevealButton() {
+  if (document.getElementById('revealBtn')) return;
+  const checkBtn = document.getElementById('checkBtn');
+  const btn = document.createElement('button');
+  btn.className = 'btn secondary';
+  btn.id = 'revealBtn';
+  btn.style.marginLeft = '10px';
+  btn.textContent = 'Show Answer & Continue →';
+  btn.addEventListener('click', () => {
+    const ch = currentChallenge;
+    const input = document.getElementById('answer');
+    const feedback = document.getElementById('feedback');
+    answered = true;
+    input.value = ch.accept[0];
+    input.disabled = true;
+    feedback.classList.remove('wrong');
+    feedback.classList.add('correct');
+    feedback.innerHTML = `Here's the answer: <code>${ch.accept[0]}</code><div class="explain">${ch.explain}</div>`;
+    checkBtn.textContent = (current + 1 < LEVELS.length) ? 'Next Level →' : 'See Results 🏁';
+    btn.remove();
+    maybeShowPracticeButton();
+  });
+  checkBtn.after(btn);
+}
+
+// Show a "Practice another" button if the level has practice tasks left to try.
+function maybeShowPracticeButton() {
+  if (document.getElementById('practiceBtn')) return;
+  const lv = LEVELS[current];
+  if (!lv.practice || practiceIndex >= lv.practice.length) return;
+  const checkBtn = document.getElementById('checkBtn');
+  const btn = document.createElement('button');
+  btn.className = 'btn secondary';
+  btn.id = 'practiceBtn';
+  btn.style.marginLeft = '10px';
+  btn.textContent = 'Practice another ↻';
+  btn.addEventListener('click', startPractice);
+  checkBtn.after(btn);
+}
+
+function nextLevel() {
+  current++;
+  // Only advance the player's true position when they're at the frontier
+  // (not when they're just moving forward through a review of earlier levels).
+  if (current > maxReached) maxReached = current;
+  if (current < LEVELS.length) {
+    renderLevel();
+  } else {
+    renderEnd();
+  }
+}
+
+function renderEnd() {
+  progressEl.style.width = '100%';
+  const displayScore = Number.isInteger(score) ? score : score.toFixed(1);
+  const pct = Math.round(score / LEVELS.length * 100);
+  let msg;
+  if (pct === 100) msg = "Perfect! You're ready for the terminal. 🐧";
+  else if (pct >= 70) msg = "Great work — solid command of the basics!";
+  else if (pct >= 40) msg = "Good start. Review the tricky ones and try again.";
+  else msg = "Keep practicing — repetition is how the commands stick.";
+
+  gameEl.innerHTML = `
+    <div class="card end-screen">
+      <h2>🏁 Quest Complete!</h2>
+      <div class="score-big">${displayScore} / ${LEVELS.length}</div>
+      <p class="level-tag">Full points = first try. Half points = solved after a retry.</p>
+      <p style="margin-top:10px;">🔥 Best streak: <strong style="color:var(--yellow)">${bestStreak}</strong> in a row</p>
+      <p>${msg}</p>
+      <p style="margin-top:16px;">Ready to prove it? Take the quiz to test what you learned.</p>
+      <button class="btn" id="quizBtn">Take the Quiz 📝</button>
+      <button class="btn secondary" id="restartBtn" style="margin-left:10px;">Replay Game ↻</button>
+    </div>
+  `;
+  document.getElementById('quizBtn').addEventListener('click', startQuiz);
+  document.getElementById('restartBtn').addEventListener('click', () => {
+    current = 0; maxReached = 0; score = 0; streak = 0; bestStreak = 0;
+    updateStreakBadge(false);
+    renderLevel();
+  });
+}
+
+// ---------- QUIZ ----------
+function startQuiz() {
+  quizAnswers = new Array(QUIZ.length).fill(null);
+  progressEl.style.width = '0%';
+  renderQuiz();
+}
+
+function renderQuiz() {
+  const letters = ['A', 'B', 'C', 'D'];
+  const questionsHtml = QUIZ.map((item, qi) => {
+    const optsHtml = item.opts.map((opt, oi) => `
+      <li class="quiz-opt" data-q="${qi}" data-o="${oi}">
+        <span class="quiz-letter">${letters[oi]}</span> ${opt}
+      </li>`).join('');
+    return `
+      <div class="card quiz-card" id="qcard-${qi}">
+        <div class="level-tag">Question ${qi + 1} of ${QUIZ.length}</div>
+        <div class="quiz-q">${item.q}</div>
+        <ul class="quiz-opts">${optsHtml}</ul>
+        <div class="quiz-explain" id="qexplain-${qi}"></div>
+      </div>`;
+  }).join('');
+
+  gameEl.innerHTML = `
+    <div class="card">
+      <h2 style="color:var(--purple);">📝 Knowledge Check</h2>
+      <p>Answer all ${QUIZ.length} questions, then submit to see how you did. One correct answer each.</p>
+    </div>
+    ${questionsHtml}
+    <div class="card" style="text-align:center;">
+      <button class="btn" id="submitQuizBtn">Submit Answers ✅</button>
+      <div class="quiz-warn" id="quizWarn" style="display:none;color:var(--yellow);margin-top:10px;"></div>
+    </div>
+  `;
+
+  // Select an option (toggle highlight, store choice).
+  gameEl.querySelectorAll('.quiz-opt').forEach(el => {
+    el.addEventListener('click', () => {
+      const qi = +el.dataset.q, oi = +el.dataset.o;
+      quizAnswers[qi] = oi;
+      // clear siblings, mark this one
+      document.querySelectorAll(`.quiz-opt[data-q="${qi}"]`).forEach(s => s.classList.remove('selected'));
+      el.classList.add('selected');
+    });
+  });
+
+  document.getElementById('submitQuizBtn').addEventListener('click', gradeQuiz);
+}
+
+function gradeQuiz() {
+  const warn = document.getElementById('quizWarn');
+  const unanswered = quizAnswers.filter(a => a === null).length;
+  if (unanswered > 0) {
+    warn.style.display = 'block';
+    warn.textContent = `Please answer all questions — ${unanswered} left.`;
+    return;
+  }
+
+  let correctCount = 0;
+  QUIZ.forEach((item, qi) => {
+    const chosen = quizAnswers[qi];
+    const isRight = chosen === item.correct;
+    if (isRight) correctCount++;
+    // lock and color the options
+    document.querySelectorAll(`.quiz-opt[data-q="${qi}"]`).forEach(el => {
+      const oi = +el.dataset.o;
+      el.style.pointerEvents = 'none';
+      if (oi === item.correct) el.classList.add('correct-opt');
+      else if (oi === chosen) el.classList.add('wrong-opt');
+    });
+    const ex = document.getElementById(`qexplain-${qi}`);
+    ex.classList.add('show');
+    ex.innerHTML = (isRight ? '✓ Correct. ' : '✗ Not quite. ') + item.why;
+  });
+
+  const btnBox = document.getElementById('submitQuizBtn').parentElement;
+  const pct = Math.round(correctCount / QUIZ.length * 100);
+  let msg;
+  if (pct === 100) msg = "Perfect score — you've truly mastered these commands! 🐧";
+  else if (pct >= 70) msg = "Strong understanding — nice work!";
+  else if (pct >= 40) msg = "Decent — revisit the game levels for the ones you missed.";
+  else msg = "Replay the game and try again — you'll get there.";
+
+  btnBox.innerHTML = `
+    <h2 style="color:var(--green);">Quiz Complete!</h2>
+    <div class="score-big">${correctCount} / ${QUIZ.length}</div>
+    <p>${msg}</p>
+    <button class="btn" id="retakeBtn">Retake Quiz ↻</button>
+    <button class="btn secondary" id="backGameBtn" style="margin-left:10px;">Replay Game 🎮</button>
+  `;
+  document.getElementById('retakeBtn').addEventListener('click', startQuiz);
+  document.getElementById('backGameBtn').addEventListener('click', () => {
+    current = 0; maxReached = 0; score = 0; streak = 0; bestStreak = 0;
+    updateStreakBadge(false);
+    renderLevel();
+  });
+  progressEl.style.width = '100%';
+  gameEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+renderLevel();
+</script>
+</body>
+</html>

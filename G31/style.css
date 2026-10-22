@@ -1,0 +1,176 @@
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #14161a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  font-family: system-ui, sans-serif;
+}
+
+#game-container {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+canvas {
+  display: block;
+}
+
+/* ---- ForkTree HTML task overlay (bottom panel over the canvas) ---- */
+.ft-overlay {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1024px;
+  height: 720px;
+  pointer-events: none;
+}
+.ft-panel {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  width: 1000px;
+  min-height: 150px;
+  box-sizing: border-box;
+  background: #1d2027;
+  border: 1px solid #2b3038;
+  border-radius: 8px;
+  padding: 14px 16px;
+  pointer-events: auto;
+  color: #c7ccd4;
+  font-family: system-ui, sans-serif;
+}
+.ft-instr {
+  font-size: 15px;
+  line-height: 1.5;
+  margin-bottom: 10px;
+}
+.ft-instr code {
+  background: #2b3038;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  color: #e0c060;
+}
+.ft-count {
+  margin-left: 8px;
+  color: #7fd67f;
+}
+.ft-explain {
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: #15171c;
+  border-left: 3px solid #5f8dd6;
+  border-radius: 4px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: #aeb4bd;
+}
+.ft-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  margin-bottom: 10px;
+}
+.ft-inp {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+}
+.ft-inp input {
+  background: #0f1115;
+  border: 1px solid #3a4358;
+  border-radius: 5px;
+  color: #eaf0ff;
+  font-size: 15px;
+  font-family: ui-monospace, monospace;
+  padding: 5px 8px;
+  outline: none;
+}
+.ft-inp input:focus {
+  border-color: #5f8dd6;
+}
+.ft-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.ft-btn {
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: system-ui, sans-serif;
+}
+.ft-primary { background: #5f8dd6; color: #fff; }
+.ft-primary:hover { background: #6f9de6; }
+.ft-secondary { background: #2b3038; color: #c7ccd4; }
+.ft-secondary:hover { background: #353b45; }
+.ft-hint { background: transparent; color: #e0c060; border: 1px solid #e0c060; }
+.ft-hint:hover { background: rgba(224,192,96,0.12); }
+.ft-feedback {
+  margin-top: 10px;
+  font-size: 14px;
+  line-height: 1.45;
+  min-height: 18px;
+}
+
+/* ---- source code panel (HTML overlay over the Phaser SOURCE panel) ---- */
+.ft-code {
+  position: absolute;
+  left: 24px;
+  top: 46px;
+  width: 264px;
+  margin: 0;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.55;
+  color: #c7ccd4;
+  pointer-events: none;
+}
+.ft-code .ln {
+  white-space: pre;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+.ft-code .ln.active {
+  background: #33405c;
+  box-shadow: inset 3px 0 0 #7fb0ff;
+}
+.tk-kw  { color: #c98fe0; }
+.tk-fn  { color: #6fb0ff; }
+.tk-str { color: #7fd67f; }
+.tk-num { color: #e0a860; }
+.tk-com { color: #6d7480; font-style: italic; }
+
+/* correct / wrong input feedback */
+.ft-inp input.ft-ok  { border-color: #7fd67f; background: #16241a; }
+.ft-inp input.ft-bad { border-color: #e07f7f; background: #2a1a1c; }
+
+/* end-of-round glossary */
+.ft-gloss {
+  position: absolute;
+  left: 24px;
+  top: 300px;
+  width: 264px;
+  display: none;
+  font-family: system-ui, sans-serif;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #aeb4bd;
+  background: #15171c;
+  border-left: 3px solid #6fb0ff;
+  border-radius: 4px;
+  padding: 8px 10px;
+  pointer-events: none;
+}
+.ft-code.gloss-on { pointer-events: auto; }
+.ft-code.gloss-on .tk-fn {
+  cursor: pointer;
+  text-decoration: underline dotted;
+}
+.ft-code.gloss-on .tk-fn:hover { color: #9cd0ff; }

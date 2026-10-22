@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>The Monkey's Pointer Challenge</title>
+<style>
+  :root {
+    --bg: #0f1b12;
+    --panel: #17281b;
+    --panel-2: #1e3524;
+    --accent: #6fcf7f;
+    --accent-2: #f2c14e;
+    --text: #e8f5e9;
+    --muted: #9fb8a5;
+    --wrong: #e06c6c;
+    --right: #6fcf7f;
+    --code-bg: #0b140d;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    background: radial-gradient(circle at 50% -10%, #1c3322, var(--bg));
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 24px;
+  }
+  .app {
+    width: 100%;
+    max-width: 820px;
+  }
+  h1 { font-size: 1.9rem; margin: 0 0 4px; }
+  .subtitle { color: var(--muted); margin: 0 0 20px; }
+  .panel {
+    background: var(--panel);
+    border: 1px solid #24402c;
+    border-radius: 14px;
+    padding: 22px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.35);
+  }
+  .lore {
+    line-height: 1.6;
+    color: #d7ead9;
+    white-space: pre-line;
+    max-height: 320px;
+    overflow-y: auto;
+    margin-bottom: 18px;
+  }
+  button {
+    font: inherit;
+    cursor: pointer;
+    border: none;
+    border-radius: 10px;
+    padding: 12px 18px;
+    background: var(--accent);
+    color: #0b1a0e;
+    font-weight: 600;
+    transition: transform .05s ease, filter .15s ease;
+  }
+  button:hover { filter: brightness(1.08); }
+  button:active { transform: translateY(1px); }
+  button:disabled { opacity: .5; cursor: default; }
+
+  /* HUD */
+  .hud {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+  .stat {
+    background: var(--panel-2);
+    border-radius: 10px;
+    padding: 8px 14px;
+    font-size: .95rem;
+  }
+  .stat b { color: var(--accent-2); }
+  .bar {
+    height: 10px;
+    background: #0b140d;
+    border-radius: 6px;
+    overflow: hidden;
+    margin-top: 6px;
+  }
+  .bar > div {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    width: 0%;
+    transition: width .4s ease;
+  }
+  .badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: .8rem;
+    font-weight: 700;
+  }
+  .badge.easy { background: #24402c; color: var(--accent); }
+  .badge.medium { background: #3a3416; color: var(--accent-2); }
+  .badge.hard { background: #3a1c1c; color: var(--wrong); }
+  .badge.debuff { background: #3a1c1c; color: #ffb4b4; }
+
+  /* Monkey speech */
+  .monkey {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    margin-bottom: 16px;
+  }
+  .monkey .face { font-size: 2.6rem; line-height: 1; }
+  .monkey .bubble {
+    background: var(--panel-2);
+    border-radius: 12px;
+    padding: 12px 16px;
+    position: relative;
+    flex: 1;
+  }
+
+  /* Code / memory */
+  pre.code {
+    background: var(--code-bg);
+    border: 1px solid #22331f;
+    border-radius: 10px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    font-family: "JetBrains Mono", Consolas, monospace;
+    font-size: .95rem;
+    line-height: 1.55;
+    color: #cfe9d2;
+    margin: 0 0 16px;
+  }
+  .kw { color: #f2c14e; }
+  .cm { color: #6f8f76; font-style: italic; }
+  .num { color: #9fd3ff; }
+  .str { color: #ffb4b4; }
+
+  .memory {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 0 0 16px;
+  }
+  .cell {
+    background: var(--code-bg);
+    border: 1px solid #22331f;
+    border-radius: 8px;
+    padding: 8px 12px;
+    min-width: 92px;
+    font-family: Consolas, monospace;
+  }
+  .cell .name { color: var(--accent-2); font-size: .8rem; }
+  .cell .val { font-size: 1.1rem; }
+  .cell .addr { color: var(--muted); font-size: .72rem; }
+
+  /* Answer choices */
+  .choices { display: grid; gap: 10px; }
+  .choice {
+    text-align: left;
+    background: var(--panel-2);
+    color: var(--text);
+    border: 1px solid #2c4a34;
+    font-weight: 500;
+  }
+  .choice.correct { background: #1e3f26; border-color: var(--right); color: #d6ffdd; }
+  .choice.wrong { background: #3a1c1c; border-color: var(--wrong); color: #ffd6d6; }
+  .choice:disabled { opacity: 1; }
+
+  .feedback {
+    margin-top: 14px;
+    padding: 12px 16px;
+    border-radius: 10px;
+    line-height: 1.5;
+    display: none;
+  }
+  .feedback.show { display: block; }
+  .feedback.good { background: #17301d; border: 1px solid var(--right); }
+  .feedback.bad { background: #301717; border: 1px solid var(--wrong); }
+
+  .row { display: flex; gap: 12px; justify-content: flex-end; margin-top: 16px; }
+
+  /* Hints */
+  .hint-row { display: flex; align-items: center; gap: 12px; margin-top: 14px; }
+  .hint-btn {
+    background: var(--panel-2);
+    color: var(--accent-2);
+    border: 1px solid #4a4116;
+    padding: 8px 14px;
+  }
+  .hint-note { color: var(--muted); font-size: .82rem; }
+  .hint {
+    background: #2a2712;
+    border: 1px solid #4a4116;
+    border-left: 4px solid var(--accent-2);
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 8px;
+    line-height: 1.5;
+  }
+  .hint .tag { color: var(--accent-2); font-weight: 700; margin-right: 6px; }
+  .hint .cost { color: var(--muted); font-size: .8rem; float: right; }
+
+  /* Item picker */
+  .items { display: flex; gap: 16px; justify-content: center; margin: 18px 0; }
+  .item-card {
+    width: 96px; height: 120px;
+    background: var(--panel-2);
+    border: 2px solid #2c4a34;
+    border-radius: 12px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    font-size: 2.4rem; cursor: pointer;
+    transition: transform .15s ease;
+  }
+  .item-card:hover { transform: translateY(-4px); border-color: var(--accent); }
+  .item-card.revealed { cursor: default; }
+  .item-card .label { font-size: .7rem; margin-top: 6px; color: var(--muted); }
+  .hidden { display: none !important; }
+  .center { text-align: center; }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>🐒 The Monkey's Pointer Challenge</h1>
+  <p class="subtitle">A C++ pointers game — reach 100 points to get your belongings back.</p>
+
+  <!-- INTRO -->
+  <section id="intro" class="panel">
+    <div class="lore" id="loreText"></div>
+    <div class="center">
+      <button id="startBtn">I accept the challenge</button>
+    </div>
+  </section>
+
+  <!-- GAME -->
+  <section id="game" class="panel hidden">
+    <div class="hud">
+      <div class="stat">Score: <b id="score">0</b> / 100
+        <div class="bar"><div id="scoreBar"></div></div>
+      </div>
+      <div class="stat">Question: <b id="qcount">1</b></div>
+      <div class="stat">Difficulty: <span id="difficulty" class="badge easy">EASY</span></div>
+      <div class="stat" id="debuffStat" style="display:none">Debuff: <span class="badge debuff" id="debuffLeft">3 left</span></div>
+    </div>
+
+    <div class="monkey">
+      <div class="face" id="monkeyFace">🐒</div>
+      <div class="bubble" id="monkeyText">Let's begin...</div>
+    </div>
+
+    <div id="codeBlock"></div>
+    <div class="memory" id="memory"></div>
+
+    <div class="choices" id="choices"></div>
+
+    <div id="hintArea"></div>
+    <div class="hint-row" id="hintRow">
+      <button id="hintBtn" class="hint-btn">💡 Hint</button>
+      <span class="hint-note" id="hintNote">Hint 1 is free · Hint 2 costs 1 pt · Hint 3 costs 2 pts</span>
+    </div>
+
+    <div class="feedback" id="feedback"></div>
+
+    <div class="row">
+      <button id="nextBtn" class="hidden">Next →</button>
+    </div>
+  </section>
+
+  <!-- ITEM PICK -->
+  <section id="itemPick" class="panel hidden">
+    <div class="monkey">
+      <div class="face">🐒</div>
+      <div class="bubble">Correct! Choose a bag — I won't tell you what's inside.</div>
+    </div>
+    <div class="items" id="items"></div>
+    <div class="feedback good" id="itemResult"></div>
+    <div class="row">
+      <button id="itemContinue" class="hidden">Continue →</button>
+    </div>
+  </section>
+
+  <!-- WIN -->
+  <section id="win" class="panel hidden center">
+    <div style="font-size:3rem">🎉🐒🎒</div>
+    <h1>You won your belongings back!</h1>
+    <p class="subtitle">The monkey nods with respect. You've mastered the basics of pointers.</p>
+    <p>Final score: <b id="finalScore"></b> · Questions answered: <b id="finalQ"></b></p>
+    <button onclick="location.reload()">Play again</button>
+  </section>
+</div>
+
+<script>
+/* ------------------------------------------------------------------ *
+ *  THE MONKEY'S POINTER CHALLENGE
+ *  Single-file educational C++ pointers game.
+ * ------------------------------------------------------------------ */
+
+const LORE = `You are lost in the rainforest, as your plane crash-landed on an island.
+Fortunately, you have found most of your food supplies, but you are still missing some of your personal things.
+
+As you search around, you see a monkey hiding in the trees. At the stump of that tree are some large bags that may or may not hold your personal belongings. You rush to grab them, but the monkey blocks you.
+
+"If you want your personal belongings back — and to survive in this forest — you must answer my questions," he says.
+
+"What questions?" you ask.
+
+"Good one," replies the monkey. "You will tell me what I am pointing at. I have sorted and arranged your belongings, but they can be hidden in other places. It is not impossible to win, but I cannot say it will be easy. So, what do you think?"
+
+You hesitate, then gain confidence: "I accept the challenge."
+
+"Good choice," says the monkey. "Let's get started."`;
+
+/* ---------- Question bank ----------
+   Each question:
+   - difficulty: 'easy' | 'medium' | 'hard'
+   - code: HTML string shown in the code block (already syntax-highlighted)
+   - memory: array of {name, val, addr}  (optional visual)
+   - prompt: what the monkey asks
+   - choices: array of strings
+   - answer: index of correct choice
+   - explain: shown after answering
+*/
+const QUESTIONS = [
+  /* ===== EASY ===== */
+  {
+    difficulty: 'easy',
+    code: `<span class="kw">int</span> x = <span class="num">42</span>;
+<span class="kw">int</span>* p = &x;`,
+    memory: [
+      { name: 'x', val: '42', addr: '0x1000' },
+      { name: 'p', val: '0x1000', addr: '0x2000' }
+    ],
+    prompt: `I point at <code>p</code>. What VALUE does p hold?`,
+    choices: ['42', 'The address of x (0x1000)', 'The address of p (0x2000)', 'Nothing / garbage'],
+    answer: 1,
+    explain: `A pointer stores an <b>address</b>. Since <code>p = &x</code>, p holds the address of x (0x1000).`,
+    hints: [
+      `A pointer variable stores a memory address — not a value.`,
+      `Look at <code>int* p = &x;</code> — the <code>&</code> operator means "address of".`,
+      `x lives at 0x1000, so <code>&x</code> is 0x1000. That is exactly what p holds.`
+    ]
+  },
+  {
+    difficulty: 'easy',
+    code: `<span class="kw">int</span> x = <span class="num">42</span>;
+<span class="kw">int</span>* p = &x;`,
+    memory: [
+      { name: 'x', val: '42', addr: '0x1000' },
+      { name: 'p', val: '0x1000', addr: '0x2000' }
+    ],
+    prompt: `Now I dereference: what does <code>*p</code> give me?`,
+    choices: ['0x1000', '42', 'The address of p', 'A compile error'],
+    answer: 1,
+    explain: `<code>*p</code> means "go to the address stored in p and read the value there." That value is 42.`,
+    hints: [
+      `The <code>*</code> operator on an existing pointer means "follow the address".`,
+      `p points to x, so following it lands you on x.`,
+      `x holds 42, therefore <code>*p</code> is 42.`
+    ]
+  },
+  {
+    difficulty: 'easy',
+    code: `<span class="kw">int</span>* p = <span class="kw">nullptr</span>;`,
+    memory: [ { name: 'p', val: 'nullptr', addr: '0x2000' } ],
+    prompt: `What happens if I dereference <code>*p</code> right now?`,
+    choices: ['Returns 0 safely', 'Undefined behavior / crash', 'Returns the address', 'Nothing, it is ignored'],
+    answer: 1,
+    explain: `Dereferencing a <code>nullptr</code> is undefined behavior — typically a crash. Always check before dereferencing.`,
+    hints: [
+      `<code>nullptr</code> intentionally points to no valid object.`,
+      `There is no real memory to "follow" at that address.`,
+      `Following an invalid address is undefined behavior — usually a crash.`
+    ]
+  },
+  {
+    difficulty: 'easy',
+    code: `<span class="kw">int</span> a = <span class="num">5</span>;
+<span class="kw">int</span>* p = &a;
+*p = <span class="num">9</span>;`,
+    memory: [
+      { name: 'a', val: '5 → ?', addr: '0x1000' },
+      { name: 'p', val: '0x1000', addr: '0x2000' }
+    ],
+    prompt: `After <code>*p = 9;</code>, what is the value of <code>a</code>?`,
+    choices: ['5', '9', '0x1000', 'Unchanged, p changed instead'],
+    answer: 1,
+    explain: `<code>*p = 9</code> writes through the pointer to the location p points at — which is <code>a</code>. So a becomes 9.`,
+    hints: [
+      `Writing to <code>*p</code> writes to whatever p points at.`,
+      `p was set with <code>p = &a</code>, so p points at a.`,
+      `So the 9 lands in a — a becomes 9.`
+    ]
+  },
+  {
+    difficulty: 'easy',
+    code: `<span class="kw">int</span> x = <span class="num">7</span>;
+<span class="kw">int</span>& r = x;`,
+    memory: [ { name: 'x / r', val: '7', addr: '0x1000' } ],
+    prompt: `<code>r</code> is a reference to x. What is <code>r</code>?`,
+    choices: ['A separate copy of x', 'An alias for x (same variable)', 'A pointer holding x\u2019s address', 'Always nullptr'],
+    answer: 1,
+    explain: `A reference is an <b>alias</b>: r and x name the same memory. Changing r changes x, and vice versa.`,
+    hints: [
+      `A reference is declared with <code>&</code> in the type: <code>int& r</code>.`,
+      `It makes no copy and stores no separate address.`,
+      `r and x are simply two names for the same memory.`
+    ]
+  },
+
+  /* ===== MEDIUM ===== */
+  {
+    difficulty: 'medium',
+    code: `<span class="kw">int</span> a = <span class="num">1</span>, b = <span class="num">2</span>;
+<span class="kw">int</span>* p = &a;
+p = &b;`,
+    memory: [
+      { name: 'a', val: '1', addr: '0x1000' },
+      { name: 'b', val: '2', addr: '0x1004' },
+      { name: 'p', val: '0x1000 → 0x1004', addr: '0x2000' }
+    ],
+    prompt: `After <code>p = &b;</code>, what does <code>*p</code> evaluate to?`,
+    choices: ['1', '2', '0x1000', '0x1004'],
+    answer: 1,
+    explain: `Reassigning <code>p = &b</code> makes p point at b. Dereferencing now yields b's value: 2.`,
+    hints: [
+      `Unlike references, pointers can be repointed after creation.`,
+      `The last assignment wins here: <code>p = &b</code>.`,
+      `So <code>*p</code> now reads b, which is 2.`
+    ]
+  },
+  {
+    difficulty: 'medium',
+    code: `<span class="kw">int</span> arr[<span class="num">3</span>] = {<span class="num">10</span>, <span class="num">20</span>, <span class="num">30</span>};
+<span class="kw">int</span>* p = arr;
+p++;`,
+    memory: [
+      { name: 'arr[0]', val: '10', addr: '0x1000' },
+      { name: 'arr[1]', val: '20', addr: '0x1004' },
+      { name: 'arr[2]', val: '30', addr: '0x1008' }
+    ],
+    prompt: `<code>p</code> started at <code>arr</code>. After <code>p++</code>, what is <code>*p</code>?`,
+    choices: ['10', '20', '30', 'Out of bounds'],
+    answer: 1,
+    explain: `<code>p</code> initially points at arr[0]. Pointer arithmetic <code>p++</code> advances by one <code>int</code>, so it now points at arr[1] = 20.`,
+    hints: [
+      `An array name like <code>arr</code> decays to a pointer to its first element, so p starts at arr[0].`,
+      `<code>p++</code> moves the pointer forward by one <code>int</code> element, not one byte.`,
+      `It now points at arr[1], whose value is 20.`
+    ]
+  },
+  {
+    difficulty: 'medium',
+    code: `<span class="kw">void</span> f(<span class="kw">int</span> n)  { n = <span class="num">99</span>; }
+<span class="kw">void</span> g(<span class="kw">int</span>& n) { n = <span class="num">99</span>; }
+<span class="kw">int</span> x = <span class="num">5</span>;
+f(x);  <span class="cm">// pass by value</span>
+g(x);  <span class="cm">// pass by reference</span>`,
+    prompt: `After both calls run, what is <code>x</code>?`,
+    choices: ['5', '99', '198', 'Undefined'],
+    answer: 1,
+    explain: `<code>f</code> takes a copy, so it can't change x. <code>g</code> takes a reference (alias), so it sets x to 99. Final value: 99.`,
+    hints: [
+      `<code>f(int n)</code> copies its argument; changes stay local and vanish.`,
+      `<code>g(int& n)</code> takes a reference — an alias to the caller's variable.`,
+      `Only g's change sticks, setting x to 99.`
+    ]
+  },
+  {
+    difficulty: 'medium',
+    code: `<span class="kw">int</span> x = <span class="num">8</span>;
+<span class="kw">int</span>* p = &x;
+<span class="kw">int</span>** pp = &p;`,
+    memory: [
+      { name: 'x', val: '8', addr: '0x1000' },
+      { name: 'p', val: '0x1000', addr: '0x2000' },
+      { name: 'pp', val: '0x2000', addr: '0x3000' }
+    ],
+    prompt: `<code>pp</code> is a pointer to a pointer. What does <code>**pp</code> give?`,
+    choices: ['0x1000', '0x2000', '8', 'A compile error'],
+    answer: 2,
+    explain: `<code>*pp</code> gives p (0x1000). Dereferencing again, <code>**pp</code>, follows that to x = 8.`,
+    hints: [
+      `pp points to p, and p points to x — two levels of indirection.`,
+      `<code>*pp</code> gives you p (an <code>int*</code> holding 0x1000).`,
+      `<code>**pp</code> follows one more level to reach x = 8.`
+    ]
+  },
+  {
+    difficulty: 'medium',
+    code: `<span class="kw">int</span>* p = <span class="kw">new</span> <span class="kw">int</span>(<span class="num">50</span>);
+<span class="kw">delete</span> p;
+<span class="cm">// p is not reset</span>`,
+    memory: [ { name: 'p', val: '0x1000 (freed)', addr: '0x2000' } ],
+    prompt: `After <code>delete p;</code>, using <code>*p</code> makes p a...?`,
+    choices: ['Null pointer', 'Dangling pointer', 'Smart pointer', 'Reference'],
+    answer: 1,
+    explain: `The memory is freed but p still holds the old address — a <b>dangling pointer</b>. Dereferencing it is undefined behavior. Set <code>p = nullptr;</code> after delete.`,
+    hints: [
+      `<code>delete</code> frees the memory but does not change p's stored address.`,
+      `p still holds an address that is no longer valid to use.`,
+      `A pointer to freed memory has a specific name — it "dangles".`
+    ]
+  },
+
+  /* ===== HARD (rare) ===== */
+  {
+    difficulty: 'hard',
+    code: `<span class="kw">int</span> a = <span class="num">1</span>;
+<span class="kw">const</span> <span class="kw">int</span>* p = &a;   <span class="cm">// pointer to const int</span>`,
+    memory: [ { name: 'a', val: '1', addr: '0x1000' }, { name: 'p', val: '0x1000', addr: '0x2000' } ],
+    prompt: `With <code>const int* p</code>, which is ALLOWED?`,
+    choices: ['*p = 2;  (change the value)', 'p = &b;  (repoint to another int)', 'Both are allowed', 'Neither is allowed'],
+    answer: 1,
+    explain: `<code>const int* p</code> means the pointed-to value is const: you can't do <code>*p = 2</code>, but you CAN repoint p. (Contrast: <code>int* const p</code> locks the pointer, not the value.)`,
+    hints: [
+      `Read it right-to-left: p is a pointer to a <code>const int</code>.`,
+      `The <code>const</code> protects the pointed-to value, not the pointer itself.`,
+      `So <code>*p = 2</code> is illegal, but repointing <code>p = &b</code> is allowed.`
+    ]
+  },
+  {
+    difficulty: 'hard',
+    code: `<span class="kw">int</span> arr[<span class="num">3</span>] = {<span class="num">4</span>, <span class="num">5</span>, <span class="num">6</span>};
+<span class="kw">int</span>* p = arr;
+<span class="kw">int</span> v = *(p + <span class="num">2</span>);`,
+    memory: [
+      { name: 'arr[0]', val: '4', addr: '0x1000' },
+      { name: 'arr[1]', val: '5', addr: '0x1004' },
+      { name: 'arr[2]', val: '6', addr: '0x1008' }
+    ],
+    prompt: `What is <code>v = *(p + 2)</code>?`,
+    choices: ['4', '5', '6', '0x1008'],
+    answer: 2,
+    explain: `<code>*(p + 2)</code> is identical to <code>arr[2]</code>. It reads the value two ints past the start: 6.`,
+    hints: [
+      `<code>*(p + n)</code> is exactly the same as <code>p[n]</code> / <code>arr[n]</code>.`,
+      `Here n = 2, so this reads arr[2].`,
+      `arr[2] holds 6.`
+    ]
+  }
+];
+
+/* ---------- Item pool ---------- */
+const BELONGINGS = [
+  { icon: '📱', name: 'Your phone', pts: 15 },
+  { icon: '🧭', name: 'Your compass', pts: 15 },
+  { icon: '📷', name: 'Your camera', pts: 15 },
+  { icon: '👟', name: 'Your hiking boots', pts: 12 },
+  { icon: '🔦', name: 'Your flashlight', pts: 12 }
+];
+const JUNK = [
+  { icon: '🥥', name: 'A coconut', pts: 3 },
+  { icon: '🍌', name: 'A banana (the monkey grins)', pts: 2 },
+  { icon: '🪨', name: 'A rock', pts: 2 },
+  { icon: '🐚', name: 'A seashell', pts: 3 },
+  { icon: '🍃', name: 'A pile of leaves', pts: 1 }
+];
+
+/* ---------- Game state ---------- */
+const state = {
+  score: 0,
+  qnum: 0,
+  difficulty: 'easy',   // current normal difficulty
+  debuff: 0,            // remaining easy questions in debuff, 0 = none
+  used: new Set(),      // used question indices (reset when exhausted)
+  current: null,
+  hintsUsed: 0          // hints revealed for the current question
+};
+
+const HINT_COSTS = [0, 1, 2]; // cost of hint 1, 2, 3
+
+const $ = id => document.getElementById(id);
+
+/* ---------- Intro ---------- */
+$('loreText').textContent = LORE;
+$('startBtn').addEventListener('click', () => {
+  $('intro').classList.add('hidden');
+  $('game').classList.remove('hidden');
+  nextQuestion();
+});
+
+/* ---------- Question selection ---------- */
+function pickDifficulty() {
+  if (state.debuff > 0) return 'easy';
+  // normal flow: mostly current difficulty, hard is rare
+  if (state.difficulty === 'hard') {
+    // even when "hard" is unlocked, only sometimes ask hard
+    return Math.random() < 0.35 ? 'hard' : 'medium';
+  }
+  return state.difficulty;
+}
+
+function getQuestion(diff) {
+  let pool = QUESTIONS.map((q, i) => ({ q, i }))
+                      .filter(o => o.q.difficulty === diff && !state.used.has(o.i));
+  if (pool.length === 0) {
+    // reset used for this difficulty
+    QUESTIONS.forEach((q, i) => { if (q.difficulty === diff) state.used.delete(i); });
+    pool = QUESTIONS.map((q, i) => ({ q, i })).filter(o => o.q.difficulty === diff);
+  }
+  const choice = pool[Math.floor(Math.random() * pool.length)];
+  state.used.add(choice.i);
+  return choice.q;
+}
+
+function pointsFor(diff) {
+  return diff === 'hard' ? 3 : diff === 'medium' ? 2 : 1;
+}
+
+/* ---------- Render a question ---------- */
+function nextQuestion() {
+  state.qnum++;
+  const diff = pickDifficulty();
+  const q = getQuestion(diff);
+  state.current = q;
+
+  // HUD
+  $('qcount').textContent = state.qnum;
+  const dEl = $('difficulty');
+  dEl.textContent = diff.toUpperCase();
+  dEl.className = 'badge ' + diff;
+  if (state.debuff > 0) {
+    $('debuffStat').style.display = '';
+    $('debuffLeft').textContent = state.debuff + ' left';
+  } else {
+    $('debuffStat').style.display = 'none';
+  }
+
+  // Monkey line
+  $('monkeyFace').textContent = state.debuff > 0 ? '🙊' : '🐒';
+  $('monkeyText').innerHTML = (state.debuff > 0
+      ? '<i>(Debuff active — easy questions until you clear 3 in a row.)</i><br>'
+      : '') + q.prompt;
+
+  // Code
+  $('codeBlock').innerHTML = q.code ? `<pre class="code">${q.code}</pre>` : '';
+
+  // Memory
+  const mem = $('memory');
+  if (q.memory && q.memory.length) {
+    mem.innerHTML = q.memory.map(c => `
+      <div class="cell">
+        <div class="name">${c.name}</div>
+        <div class="val">${c.val}</div>
+        <div class="addr">@ ${c.addr}</div>
+      </div>`).join('');
+  } else {
+    mem.innerHTML = '';
+  }
+
+  // Choices
+  const ch = $('choices');
+  ch.innerHTML = '';
+  q.choices.forEach((text, i) => {
+    const b = document.createElement('button');
+    b.className = 'choice';
+    b.innerHTML = text;
+    b.addEventListener('click', () => answer(i, b));
+    ch.appendChild(b);
+  });
+
+  // Reset hints
+  state.hintsUsed = 0;
+  $('hintArea').innerHTML = '';
+  const hintRow = $('hintRow');
+  const hintBtn = $('hintBtn');
+  if (state.debuff > 0 || !q.hints || q.hints.length === 0) {
+    hintRow.style.display = 'none';   // no hints during debuff
+  } else {
+    hintRow.style.display = 'flex';
+    hintBtn.disabled = false;
+    hintBtn.textContent = '\uD83D\uDCA1 Hint';
+    $('hintNote').textContent = 'Hint 1 is free \u00b7 Hint 2 costs 1 pt \u00b7 Hint 3 costs 2 pts';
+  }
+
+  // Reset feedback / next
+  $('feedback').className = 'feedback';
+  $('feedback').innerHTML = '';
+  $('nextBtn').classList.add('hidden');
+}
+
+/* ---------- Hints ---------- */
+$('hintBtn').addEventListener('click', () => {
+  const q = state.current;
+  if (!q || !q.hints || state.hintsUsed >= q.hints.length) return;
+  const idx = state.hintsUsed;
+  const cost = HINT_COSTS[idx] || 0;
+  if (cost > 0) {
+    state.score = Math.max(0, state.score - cost);
+    updateScore();
+  }
+  const div = document.createElement('div');
+  div.className = 'hint';
+  div.innerHTML = `<span class="tag">Hint ${idx + 1}</span>`
+    + `<span class="cost">${cost === 0 ? 'free' : '-' + cost + ' pt' + (cost > 1 ? 's' : '')}</span>`
+    + q.hints[idx];
+  $('hintArea').appendChild(div);
+  state.hintsUsed++;
+
+  const btn = $('hintBtn');
+  if (state.hintsUsed >= q.hints.length) {
+    btn.disabled = true;
+    btn.textContent = 'No more hints';
+  } else {
+    const next = HINT_COSTS[state.hintsUsed] || 0;
+    btn.textContent = `\uD83D\uDCA1 Hint (\u2212${next} pt${next > 1 ? 's' : ''})`;
+  }
+});
+
+/* ---------- Handle an answer ---------- */
+function answer(idx, btn) {
+  const q = state.current;
+  const correct = idx === q.answer;
+  $('hintBtn').disabled = true;   // lock hints once answered
+  const buttons = [...document.querySelectorAll('.choice')];
+  buttons.forEach((b, i) => {
+    b.disabled = true;
+    if (i === q.answer) b.classList.add('correct');
+    else if (i === idx) b.classList.add('wrong');
+  });
+
+  const fb = $('feedback');
+  const wasDebuff = state.debuff > 0;
+
+  if (correct) {
+    const pts = wasDebuff ? 1 : pointsFor(q.difficulty);
+    state.score += pts;
+    fb.className = 'feedback good show';
+    fb.innerHTML = `✅ <b>Correct!</b> +${pts} point${pts>1?'s':''}.<br>${q.explain}`;
+
+    if (wasDebuff) {
+      state.debuff--;
+      if (state.debuff === 0) {
+        fb.innerHTML += `<br><br>🎉 Debuff cleared! The monkey resumes rewarding items.`;
+      } else {
+        fb.innerHTML += `<br><br>Keep going — ${state.debuff} more easy question${state.debuff>1?'s':''} to clear the debuff.`;
+      }
+    } else {
+      // bump difficulty up gradually
+      if (state.difficulty === 'easy') state.difficulty = 'medium';
+      else if (state.difficulty === 'medium') state.difficulty = 'hard';
+    }
+  } else {
+    fb.className = 'feedback bad show';
+    if (wasDebuff) {
+      state.debuff = 3; // reset debuff
+      fb.innerHTML = `❌ <b>Incorrect.</b> The debuff resets — 3 easy questions again.<br>${q.explain}`;
+    } else {
+      state.debuff = 3;
+      fb.innerHTML = `❌ <b>Incorrect.</b> +0 points. The monkey places a debuff: 3 easy questions.<br>${q.explain}`;
+      // knock difficulty back down a notch
+      if (state.difficulty === 'hard') state.difficulty = 'medium';
+      else if (state.difficulty === 'medium') state.difficulty = 'easy';
+    }
+  }
+
+  updateScore();
+
+  // Win check
+  if (state.score >= 100) {
+    setTimeout(showWin, 700);
+    return;
+  }
+
+  // If correct and NOT in debuff -> item pick; else next
+  if (correct && !wasDebuff) {
+    $('nextBtn').classList.remove('hidden');
+    $('nextBtn').textContent = 'Pick a bag →';
+    $('nextBtn').onclick = showItemPick;
+  } else {
+    $('nextBtn').classList.remove('hidden');
+    $('nextBtn').textContent = 'Next →';
+    $('nextBtn').onclick = nextQuestion;
+  }
+}
+
+function updateScore() {
+  if (state.score < 0) state.score = 0;
+  $('score').textContent = state.score;
+  $('scoreBar').style.width = Math.min(100, state.score) + '%';
+}
+
+/* ---------- Item pick ---------- */
+function showItemPick() {
+  $('game').classList.add('hidden');
+  $('itemPick').classList.remove('hidden');
+  $('itemResult').classList.remove('show');
+  $('itemContinue').classList.add('hidden');
+
+  // Build 3 mystery bags with hidden contents
+  const contents = [];
+  for (let i = 0; i < 3; i++) {
+    const pool = Math.random() < 0.4 ? BELONGINGS : JUNK;
+    contents.push(pool[Math.floor(Math.random() * pool.length)]);
+  }
+
+  const wrap = $('items');
+  wrap.innerHTML = '';
+  contents.forEach((item, i) => {
+    const card = document.createElement('div');
+    card.className = 'item-card';
+    card.innerHTML = `🎒<div class="label">Bag ${i+1}</div>`;
+    card.addEventListener('click', () => revealItem(card, item), { once: true });
+    wrap.appendChild(card);
+  });
+}
+
+function revealItem(card, item) {
+  // disable all cards
+  [...document.querySelectorAll('.item-card')].forEach(c => {
+    c.classList.add('revealed');
+    c.style.pointerEvents = 'none';
+  });
+  card.innerHTML = `${item.icon}<div class="label">${item.name}</div>`;
+  const isBelonging = BELONGINGS.includes(item);
+  state.score += item.pts;
+  updateScore();
+
+  const res = $('itemResult');
+  res.className = 'feedback ' + (isBelonging ? 'good' : 'bad') + ' show';
+  res.innerHTML = isBelonging
+    ? `🎒 It's <b>${item.name}</b>! One of your belongings — <b>+${item.pts} points!</b>`
+    : `${item.icon} It's ${item.name}. Not yours, but worth <b>+${item.pts} point${item.pts>1?'s':''}</b>.`;
+
+  if (state.score >= 100) {
+    setTimeout(showWin, 800);
+    return;
+  }
+  $('itemContinue').classList.remove('hidden');
+  $('itemContinue').onclick = () => {
+    $('itemPick').classList.add('hidden');
+    $('game').classList.remove('hidden');
+    nextQuestion();
+  };
+}
+
+/* ---------- Win ---------- */
+function showWin() {
+  $('game').classList.add('hidden');
+  $('itemPick').classList.add('hidden');
+  $('win').classList.remove('hidden');
+  $('finalScore').textContent = state.score;
+  $('finalQ').textContent = state.qnum;
+}
+</script>
+</body>
+</html>

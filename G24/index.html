@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>KALEIDOSCOPE: An Educational RPG</title>
+<style>
+  :root {
+    --bg: #05080f;
+    --panel: #0a111e;
+    --panel-2: #0c1526;
+    --border: #1b3050;
+    --blue: #4da6ff;
+    --blue-bright: #8fd0ff;
+    --cyan: #5fe0ff;
+    --steel: #a9c2e0;
+    --muted: #52708f;
+    --danger: #ff6b81;
+    --white: #eaf4ff;
+    --ember: #ffab5c;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: var(--bg);
+    color: var(--steel);
+    font-family: "Courier New", ui-monospace, monospace;
+  }
+
+  body {
+    display: flex; align-items: center; justify-content: center;
+    background-image:
+      radial-gradient(circle at 50% -10%, rgba(77,166,255,0.10), transparent 55%),
+      repeating-linear-gradient(0deg, rgba(0,0,0,0.18) 0px, rgba(0,0,0,0.18) 1px, transparent 1px, transparent 3px);
+  }
+
+  #game {
+    width: 900px; max-width: 96vw;
+    height: 640px; max-height: 96vh;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    box-shadow: 0 0 50px rgba(77,166,255,0.14), inset 0 0 70px rgba(0,0,0,0.7);
+    position: relative; overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+
+  .screen {
+    position: absolute; inset: 0; display: none;
+    flex-direction: column; padding: 22px;
+    animation: fadein 0.4s ease;
+  }
+  .screen.active { display: flex; }
+  @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+
+  h1 {
+    font-size: 38px; letter-spacing: 4px; margin: 0;
+    color: var(--white);
+    text-shadow: 0 0 18px rgba(77,166,255,0.7);
+  }
+  .subtitle { color: var(--muted); letter-spacing: 3px; margin-top: 8px; font-size: 13px; }
+
+  .blink { animation: blink 1.1s steps(2, start) infinite; }
+  @keyframes blink { to { visibility: hidden; } }
+
+  button {
+    font-family: inherit;
+    background: linear-gradient(180deg, rgba(77,166,255,0.05), rgba(77,166,255,0.01));
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    color: var(--steel);
+    padding: 13px 16px; cursor: pointer; text-align: left;
+    transition: all 0.12s ease; font-size: 15px;
+  }
+  button:hover:not(:disabled) {
+    border-color: var(--blue);
+    color: var(--blue-bright);
+    box-shadow: 0 0 14px rgba(77,166,255,0.25);
+    transform: translateY(-1px);
+  }
+  button:disabled { opacity: 0.4; cursor: default; filter: grayscale(0.4); }
+  button:active:not(:disabled) { transform: translateY(1px) scale(0.97); }
+  /* sheen sweep on hover */
+  .heal-btn, .skill-btn, .guard-btn, .primary { position: relative; overflow: hidden; }
+  .heal-btn::after, .skill-btn::after, .guard-btn::after, .primary::after {
+    content: ""; position: absolute; top: 0; left: -60%; width: 40%; height: 100%;
+    background: linear-gradient(100deg, transparent, rgba(255,255,255,0.18), transparent);
+    transform: skewX(-20deg); transition: left 0.5s ease;
+  }
+  .heal-btn:hover:not(:disabled)::after, .skill-btn:hover:not(:disabled)::after,
+  .guard-btn:hover:not(:disabled)::after, .primary:hover:not(:disabled)::after { left: 130%; }
+  @keyframes softpulse { 0%,100%{ box-shadow: 0 0 0 rgba(0,0,0,0);} 50%{ box-shadow: 0 0 14px rgba(120,170,255,0.35);} }
+
+  .primary {
+    border-color: var(--blue); color: var(--blue-bright);
+    text-align: center; letter-spacing: 2px;
+  }
+  .heal-btn {
+    border-color: #3fd08a; color: #7fffc0;
+    text-align: center; letter-spacing: 2px;
+  }
+  .heal-btn:hover:not(:disabled) {
+    border-color: #7fffc0; color: #b8ffe0;
+    box-shadow: 0 0 14px rgba(63,208,138,0.3);
+  }
+  .dmgnum.heal { color: #7fffc0; text-shadow: 0 0 12px rgba(63,208,138,0.9); }
+  .dmgnum.crit { color: #ffd54a; font-size: 40px; text-shadow: 0 0 16px rgba(255,213,74,0.95); }
+  .skill-btn {
+    border-color: #b07fff; color: #d8bcff;
+    text-align: center; letter-spacing: 1px;
+  }
+  .skill-btn:hover:not(:disabled) {
+    border-color: #d8bcff; color: #efe0ff;
+    box-shadow: 0 0 14px rgba(176,127,255,0.3);
+  }
+  .skill-btn.armed {
+    border-color: #ffd54a; color: #ffe89a;
+    animation: softpulse 1.4s ease-in-out infinite;
+  }
+  .guard-btn {
+    border-color: #3fb0c0; color: #9fe0ea;
+    text-align: center; letter-spacing: 1px;
+  }
+  .guard-btn:hover:not(:disabled) {
+    border-color: #7fe0ee; color: #d0f6fb;
+    box-shadow: 0 0 14px rgba(63,176,192,0.3);
+  }
+  #nextBtn { animation: softpulse 1.8s ease-in-out infinite; }
+  .info-btn {
+    border-color: var(--muted); color: var(--steel);
+    text-align: center; font-weight: bold; letter-spacing: 0;
+  }
+  .info-btn:hover:not(:disabled) { border-color: var(--blue); color: var(--blue-bright); }
+
+  /* info modal */
+  .modal-overlay {
+    position: absolute; inset: 0; z-index: 20;
+    background: rgba(3,6,12,0.82);
+    display: none; align-items: center; justify-content: center;
+    animation: fadein 0.2s ease;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    width: 460px; max-width: 88%;
+    border: 1px solid var(--blue); background: var(--panel-2);
+    box-shadow: 0 0 40px rgba(77,166,255,0.25);
+    padding: 22px 24px;
+  }
+  .modal h2 { margin: 0 0 14px; color: var(--blue-bright); letter-spacing: 2px; font-size: 20px; }
+  .modal dl { margin: 0 0 18px; }
+  .modal dt { font-weight: bold; letter-spacing: 1px; margin-top: 12px; }
+  .modal dd { margin: 3px 0 0; color: var(--muted); line-height: 1.5; font-size: 14px; }
+  .modal .pill { color: var(--panel); padding: 1px 7px; border-radius: 3px; font-size: 12px; }
+  .p-atk { background: var(--blue-bright); }
+  .p-pot { background: #7fffc0; }
+  .p-ovf { background: #d8bcff; }
+  .p-grd { background: #9fe0ea; }
+
+  /* ---------- TITLE ---------- */
+  #title { align-items: center; justify-content: center; text-align: center; }
+  #title .lore { max-width: 520px; color: var(--muted); line-height: 1.7; margin: 22px 0 30px; font-size: 15px; }
+  .center-btns { display: flex; flex-direction: column; gap: 12px; width: 300px; }
+  .flex-spacer { flex: 1; }
+
+  /* ---------- BATTLE ---------- */
+  .hud { display: flex; justify-content: space-between; gap: 18px; }
+  .bar-wrap { flex: 1; }
+  .bar-label { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px; letter-spacing: 1px; }
+  .bar {
+    height: 10px; border: 1px solid var(--border);
+    background: #04070d; position: relative; overflow: hidden;
+  }
+  .bar > span { display: block; height: 100%; transition: width 0.5s cubic-bezier(.2,.8,.2,1); }
+  .hp-you > span { background: linear-gradient(90deg, var(--blue), var(--cyan)); }
+  .hp-bug > span { background: linear-gradient(90deg, #3a5a8f, var(--blue-bright)); }
+  .enemy-name { color: var(--blue-bright); letter-spacing: 1px; }
+
+  /* ---------- ARENA / dynamic abandoned background ---------- */
+  .arena {
+    position: relative;
+    height: 220px;
+    margin: 12px 0;
+    border: 1px solid var(--border);
+    background: linear-gradient(180deg, #070c16 0%, #0a1120 55%, #0b1524 100%);
+    overflow: hidden;
+  }
+  /* distant pulsing glow (dying fires / failing power) */
+  .sky {
+    position: absolute; inset: 0; z-index: 0;
+    background:
+      radial-gradient(ellipse at 72% 95%, rgba(255,120,60,0.10), transparent 42%),
+      radial-gradient(ellipse at 28% 100%, rgba(77,166,255,0.12), transparent 50%);
+    animation: skypulse 6s ease-in-out infinite;
+  }
+  @keyframes skypulse { 0%,100%{ opacity: .65; } 50%{ opacity: 1; } }
+
+  .ruins { position: absolute; inset: 0; z-index: 1; }
+  .building {
+    position: absolute; bottom: 40px;
+    background: linear-gradient(180deg, #0e1c30 0%, #060b14 100%);
+    border-top: 1px solid rgba(120,160,210,0.15);
+  }
+  .window {
+    position: absolute; width: 4px; height: 5px;
+    background: var(--ember); opacity: .1;
+    animation: flick 5s infinite;
+  }
+  .window.blue { background: var(--cyan); }
+  @keyframes flick { 0%,100%{ opacity:.07; } 45%{ opacity:.55; } 55%{ opacity:.12; } }
+
+  .particles { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+  .ash {
+    position: absolute; border-radius: 50%;
+    background: rgba(169,194,224,0.5);
+    animation: drift linear infinite;
+  }
+  @keyframes drift {
+    0%   { transform: translate(0,0); opacity: 0; }
+    12%  { opacity: .6; }
+    100% { transform: translate(var(--dx), -220px); opacity: 0; }
+  }
+
+  /* concrete street */
+  .street {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 74px; z-index: 1;
+    background:
+      linear-gradient(180deg, #33383f 0%, #2a2e34 45%, #212429 100%);
+    border-top: 1px solid rgba(190,200,210,0.28);
+    box-shadow: inset 0 6px 14px rgba(0,0,0,0.45);
+  }
+  /* faint dust/scuff texture on the concrete */
+  .street::before {
+    content: ""; position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse at 30% 40%, rgba(255,255,255,0.04), transparent 40%),
+      radial-gradient(ellipse at 75% 60%, rgba(0,0,0,0.25), transparent 45%);
+  }
+  /* pavement expansion joints in perspective (concrete seams) */
+  .floor {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 70px; z-index: 2;
+    background-image:
+      linear-gradient(rgba(190,198,206,0.10) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(190,198,206,0.07) 1px, transparent 1px);
+    background-size: 30px 20px, 30px 20px;
+    transform: perspective(180px) rotateX(60deg);
+    transform-origin: bottom;
+    opacity: 0.7;
+  }
+  /* worn center road line receding into the distance */
+  .roadline {
+    position: absolute; left: 50%; bottom: 0; width: 6px; height: 74px; z-index: 2;
+    transform: translateX(-50%);
+    background: repeating-linear-gradient(180deg, rgba(214,196,120,0.55) 0 8px, transparent 8px 18px);
+    clip-path: polygon(42% 0, 58% 0, 100% 100%, 0 100%);
+    opacity: 0.5;
+  }
+
+  .combatant { position: absolute; bottom: 16px; text-align: center; z-index: 4; }
+  .combatant.hero { left: 60px; }
+  .combatant.bug  { right: 60px; }
+  .tag { font-size: 11px; letter-spacing: 2px; margin-top: 8px; color: var(--muted); }
+
+  .pixel { display: grid; filter: drop-shadow(0 6px 10px rgba(0,0,0,0.6)); }
+  .pixel.float { animation: float 2.6s ease-in-out infinite; }
+  @keyframes float { 0%,100%{ transform: translateY(0);} 50%{ transform: translateY(-5px);} }
+  .cell { width: 100%; height: 100%; }
+
+  .recoil { animation: recoil 0.4s ease; }
+  @keyframes recoil { 0%{transform:translateX(0)} 30%{transform:translateX(16px) scale(0.95)} 100%{transform:translateX(0)} }
+  .lunge { animation: lunge 0.4s ease; }
+  @keyframes lunge { 0%{transform:translateX(0)} 40%{transform:translateX(-26px) scale(1.04)} 100%{transform:translateX(0)} }
+  .die { animation: die 0.7s forwards; }
+  @keyframes die { 0%{ opacity:1; transform:scale(1);} 100%{ opacity:0; transform:scale(1.4) translateY(-10px); filter: blur(4px) brightness(2);} }
+
+  .shake { animation: shake 0.35s; }
+  @keyframes shake { 0%,100%{transform:translate(0,0)} 20%{transform:translate(-7px,3px)} 40%{transform:translate(7px,-3px)} 60%{transform:translate(-5px,2px)} 80%{transform:translate(5px,-2px)} }
+
+  .flash { position:absolute; inset:0; z-index:5; background: var(--white); opacity:0; pointer-events:none; }
+  .flash.go { animation: flash 0.25s ease; }
+  .flash.dmg { background: var(--danger); }
+  @keyframes flash { 0%{opacity:0.5} 100%{opacity:0} }
+
+  .dmgnum {
+    position: absolute; z-index: 6; font-size: 30px; font-weight: bold;
+    color: var(--white); text-shadow: 0 0 12px rgba(77,166,255,0.9);
+    pointer-events: none; animation: dmgfloat 0.9s ease forwards;
+  }
+  .dmgnum.hurt { color: var(--danger); text-shadow: 0 0 12px rgba(255,107,129,0.9); }
+  @keyframes dmgfloat { 0%{ opacity:0; transform: translateY(0) scale(0.6);} 30%{ opacity:1; transform: translateY(-18px) scale(1.2);} 100%{ opacity:0; transform: translateY(-48px) scale(1);} }
+
+  /* code + choices */
+  .code-lang { color: var(--cyan); font-size: 11px; margin-bottom: 5px; letter-spacing: 2px; }
+  .codebox {
+    background: #04070d; border: 1px solid var(--border);
+    padding: 10px 14px; font-size: 13px; line-height: 1.5;
+    white-space: pre; overflow-x: auto; color: var(--white);
+  }
+  .prompt { color: var(--blue-bright); margin: 10px 0 8px; font-size: 15px; }
+  .prompt::before { content: "\25B8 "; color: var(--muted); }
+
+  .choices { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+  .feedback {
+    margin-top: 10px; border-left: 2px solid var(--border);
+    padding: 6px 12px; min-height: 40px; font-size: 14px; line-height: 1.5;
+    color: var(--steel);
+  }
+  .feedback.good { border-color: var(--blue); color: var(--blue-bright); }
+  .feedback.bad  { border-color: var(--danger); color: var(--danger); }
+
+  /* ---------- END ---------- */
+  #end { align-items: center; justify-content: center; text-align: center; }
+  #end .lore { max-width: 520px; color: var(--muted); line-height: 1.7; margin: 18px 0 26px; font-size: 15px; }
+</style>
+</head>
+<body>
+<div id="game">
+
+  <!-- TITLE -->
+  <section id="title" class="screen active">
+    <h1>KALEIDOSCOPE</h1>
+    <div class="subtitle">AN EDUCATIONAL RPG</div>
+    <p class="lore">
+      The world ran on code. Then the code broke.<br>
+      Now the <span style="color:var(--danger)">BUGS</span> hunt what remains.<br><br>
+      You are the last Debugger. Find the fault. Push the fix.
+    </p>
+    <div class="center-btns">
+      <button class="primary" id="startBtn">&gt; BEGIN</button>
+    </div>
+    <div class="flex-spacer"></div>
+    <div class="subtitle blink">press begin_</div>
+  </section>
+
+  <!-- BATTLE -->
+  <section id="battle" class="screen">
+    <div class="hud">
+      <div class="bar-wrap">
+        <div class="bar-label"><span>DEBUGGER</span><span id="youHpText">100/100</span></div>
+        <div class="bar hp-you"><span id="youHp" style="width:100%"></span></div>
+      </div>
+      <div class="bar-wrap">
+        <div class="bar-label"><span class="enemy-name" id="bugName">BUG</span><span id="bugHpText">100/100</span></div>
+        <div class="bar hp-bug"><span id="bugHp" style="width:100%"></span></div>
+      </div>
+    </div>
+
+    <div class="arena" id="arena">
+      <div class="sky"></div>
+      <div class="ruins" id="ruins"></div>
+      <div class="street"></div>
+      <div class="roadline"></div>
+      <div class="floor"></div>
+      <div class="particles" id="particles"></div>
+      <div class="flash" id="flash"></div>
+      <div class="combatant hero">
+        <div class="pixel float" id="heroSprite"></div>
+        <div class="tag">YOU</div>
+      </div>
+      <div class="combatant bug">
+        <div class="pixel float" id="bugSprite"></div>
+        <div class="tag" id="encounterLabel">1 / 3</div>
+      </div>
+    </div>
+
+    <div class="code-lang" id="codeLang">// javascript</div>
+    <div class="codebox" id="codeBox"></div>
+    <div class="prompt" id="questionText"></div>
+    <div class="choices" id="choices"></div>
+    <div class="feedback" id="feedback">Scan the code. Pick the fix.</div>
+
+    <div class="flex-spacer"></div>
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+      <div style="display:flex; gap:8px;">
+        <button id="potionBtn" class="heal-btn" style="width:135px;">&gt; POTION (3)</button>
+        <button id="skillBtn" class="skill-btn" style="width:170px;">&gt; OVERFLOW x3 (3)</button>
+        <button id="guardBtn" class="guard-btn" style="width:135px;">&gt; GUARD (3)</button>
+        <button id="infoBtn" class="info-btn" style="width:44px;">?</button>
+      </div>
+      <button id="nextBtn" class="primary" style="display:none; width:160px;">&gt; CONTINUE</button>
+    </div>
+  </section>
+
+  <!-- END -->
+  <section id="end" class="screen">
+    <h1 id="endTitle">RESTORED</h1>
+    <p class="lore" id="endLore"></p>
+    <div class="center-btns">
+      <button class="primary" id="restartBtn">&gt; DEBUG AGAIN</button>
+    </div>
+  </section>
+
+  <!-- INFO MODAL -->
+  <div id="infoModal" class="modal-overlay">
+    <div class="modal">
+      <h2>HOW TO FIGHT BUGS</h2>
+      <dl>
+        <dt><span class="pill p-atk">ANSWER</span></dt>
+        <dd>Read the broken code and pick the correct fix to strike the bug. A wrong pick lets the bug bite you.</dd>
+        <dt><span class="pill p-pot">POTION</span></dt>
+        <dd>Restore +50 HP (up to full). 3 per run.</dd>
+        <dt><span class="pill p-ovf">OVERFLOW x3</span></dt>
+        <dd>Arm a combo: solve TWO questions in a row to land a x3 strike. Miss either and it breaks. 3 per run.</dd>
+        <dt><span class="pill p-grd">GUARD</span></dt>
+        <dd>Brace: the bug attacks immediately for HALF damage and the question is swapped for a new one. Costs your turn (no counterattack). 3 per run.</dd>
+      </dl>
+      <button id="infoClose" class="primary" style="width:100%;">&gt; GOT IT</button>
+    </div>
+  </div>
+
+</div>
+<script src="game.js"></script>
+</body>
+</html>

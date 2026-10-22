@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RouteRunner — Delivery Coordinator</title>
+<style>
+  :root{
+    --bg:#0e1420; --panel:#18202f; --panel2:#111826; --ink:#e8eef8; --muted:#8698b4;
+    --accent:#4da3ff; --good:#43d17a; --warn:#ffcf5c; --bad:#ff6b6b; --line:#26314a;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+  header{padding:12px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+  header h1{font-size:17px;margin:0;letter-spacing:.3px}
+  header .sub{color:var(--muted);font-size:12px}
+  .bonus{margin-left:auto;text-align:right}
+  .bonus .amt{font-size:20px;font-weight:700;color:var(--good)}
+  .bonus .lbl{font-size:11px;color:var(--muted)}
+  .levelpips{display:flex;gap:6px}
+  .pip{width:26px;height:6px;border-radius:4px;background:#2a3450}
+  .pip.done{background:var(--good)} .pip.cur{background:var(--accent)}
+  .wrap{display:flex;gap:18px;padding:18px;align-items:flex-start;flex-wrap:wrap}
+  .stage{background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:12px}
+  canvas{display:block;border-radius:10px;cursor:pointer}
+  .side{flex:1;min-width:320px;max-width:440px;display:flex;flex-direction:column;gap:14px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}
+  .card h2{margin:0 0 8px;font-size:15px}
+  .card p{margin:6px 0;color:var(--muted);font-size:13.5px;line-height:1.55}
+  .brief{border-left:3px solid var(--accent);padding-left:12px}
+  button{background:#26314a;color:var(--ink);border:1px solid #35435f;border-radius:9px;padding:9px 13px;font-size:13px;cursor:pointer;transition:.12s}
+  button:hover{background:#31405e}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#04121f;font-weight:700}
+  .algos{display:flex;flex-direction:column;gap:8px;margin-top:6px}
+  .algo{display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:2px;padding:10px 12px}
+  .algo b{font-size:13.5px} .algo small{color:var(--muted);font-weight:400}
+  .algo.chosen{outline:2px solid var(--accent)}
+  .status{font-size:13.5px;padding:10px 12px;border-radius:9px;background:var(--panel2);min-height:20px;line-height:1.5}
+  .status.ok{color:var(--good)} .status.err{color:var(--bad)} .status.hint{color:var(--warn)}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .scores{display:flex;gap:10px;margin:10px 0}
+  .score{flex:1;background:var(--panel2);border-radius:10px;padding:10px;text-align:center}
+  .score .v{font-size:22px;font-weight:700} .score .k{font-size:11px;color:var(--muted)}
+  .verdict{font-size:13.5px;line-height:1.55;background:var(--panel2);border-radius:10px;padding:12px;margin-top:6px}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);margin-top:10px}
+  .legend span{display:flex;align-items:center;gap:5px}
+  .dot{width:12px;height:12px;border-radius:50%;display:inline-block}
+  .metricname{color:var(--accent);font-weight:600}
+  .switch{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);cursor:pointer;user-select:none}
+  .switch input{display:none}
+  .track{width:38px;height:20px;border-radius:20px;background:#33405c;position:relative;transition:.15s;flex:none}
+  .track::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#e8eef8;transition:.15s}
+  .switch input:checked + .track{background:var(--accent)}
+  .switch input:checked + .track::after{transform:translateX(18px)}
+  .objbadge{padding:5px 12px;border-radius:20px;font-size:12.5px;font-weight:600;border:1px solid;display:none}
+  .ckpt{font-size:11.5px;color:var(--muted);text-align:right;line-height:1.35}
+  .ckpt b{color:var(--ink)}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>📦 RouteRunner</h1>
+    <div class="sub">Delivery Coordinator — earn your bonus by routing the robot well</div>
+  </div>
+  <div class="levelpips" id="pips"></div>
+  <div id="objBadge" class="objbadge"></div>
+  <div id="ckpt" class="ckpt" style="margin-left:auto"></div>
+  <div class="bonus">
+    <div class="amt" id="bonusAmt">$0</div>
+    <div class="lbl">projected year-end bonus</div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="stage">
+    <canvas id="cv" width="720" height="480"></canvas>
+    <div class="legend">
+      <span><i class="dot" style="background:#43d17a"></i>depot (start)</span>
+      <span><i class="dot" style="background:#ff6b6b"></i>customer (goal)</span>
+      <span><i class="dot" style="background:#4da3ff"></i>expanded</span>
+      <span><i class="dot" style="background:#ffcf5c;border-radius:3px"></i>frontier (shows priority)</span>
+      <span>edge # = road cost &nbsp;·&nbsp; grey # = crow-flies h</span>
+    </div>
+  </div>
+
+  <div class="side" id="side"></div>
+</div>
+
+<script src="levels.data.js"></script>
+<script>
+const UNIT=60, EPS=1e-9;
+const cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+const distXY=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+
+// ---- per-level graph ----
+let L, N, H, phase, chosen, S; // S = live trace state
+let assist=false;              // Show priority: reveal frontier priority numbers (off by default)
+let assistUsed=false;          // set true once toggled on this level; halves the level's score
+let completed={}, bonusByLevel={};
+let mode=null;                 // 'level' | 'endless'
+let endlessLevelNum=0, endlessScores=[];
+const NAMES={bfs:'BFS',dfs:'DFS',dijkstra:"Dijkstra",greedy:'Greedy Best-First',astar:'A*'};
+const METRIC={bfs:'fewest hops from start',dfs:'most recent discovery (deepest branch)',dijkstra:'lowest cost-so-far (g)',greedy:'lowest heuristic (h)',astar:'lowest f = g + h'};
+const ALGO_DESC={
+  bfs:'Expands by number of roads crossed. Ignores road lengths.',
+  dfs:'Dives as deep as possible down one route before backtracking. Memory-light, but not the shortest path.',
+  dijkstra:'Expands by cheapest total road cost so far. No sense of direction.',
+  greedy:'Expands whatever looks closest to the customer (crow-flies). Ignores cost so far.',
+  astar:'Expands by cost-so-far PLUS crow-flies estimate. Balances both.'
+};
+
+function buildGraph(){
+  N={}; L.nodes.forEach(n=>N[n.id]={...n,adj:[]});
+  L.edges.forEach(([a,b,w])=>{
+    const ww=w??Math.round(distXY(N[a],N[b])/UNIT);
+    N[a].adj.push({to:b,w:ww}); N[b].adj.push({to:a,w:ww});
+  });
+  H={}; for(const id in N) H[id]=L.noHeuristic?0:Math.round(distXY(N[id],N[L.goal])/UNIT);
+}
+
+// reference run (for scoring optimality / expansion counts / peak memory)
+function refRun(kind){
+  const g={[L.start]:0},hops={[L.start]:0},from={},discStep={[L.start]:0};
+  const disc=new Set([L.start]),exp=new Set(),order=[]; let maxFront=1;
+  const pr=id=>kind==='bfs'?hops[id]:kind==='dfs'?-discStep[id]:kind==='dijkstra'?g[id]:kind==='greedy'?H[id]:g[id]+H[id];
+  while(true){
+    const f=[...disc].filter(x=>!exp.has(x)); if(!f.length)break;
+    maxFront=Math.max(maxFront,f.length);
+    let b=f[0]; for(const x of f) if(pr(x)<pr(b)) b=x;
+    exp.add(b); order.push(b); if(b===L.goal)break;
+    for(const {to,w} of N[b].adj){ if(exp.has(to))continue;
+      if(!disc.has(to)){ disc.add(to); discStep[to]=order.length; from[to]=b; g[to]=g[b]+(kind==='bfs'?1:w); hops[to]=hops[b]+1; }
+      else if(kind==='dijkstra'||kind==='astar'){ const ng=g[b]+w; if(ng<g[to]){g[to]=ng;from[to]=b;hops[to]=hops[b]+1;} } }
+  }
+  const path=[]; if(exp.has(L.goal)){let k=L.goal;while(k!==undefined){path.push(k);k=from[k];}path.reverse();}
+  let cost=0; for(let i=1;i<path.length;i++)cost+=N[path[i-1]].adj.find(a=>a.to===path[i]).w;
+  return {order,path,cost,found:exp.has(L.goal),expanded:order.length,maxFront};
+}
+
+// ---- live interactive trace state ----
+function newTrace(kind){
+  return {kind, g:{[L.start]:0}, hops:{[L.start]:0}, from:{}, discStep:{[L.start]:0},
+          disc:new Set([L.start]), exp:new Set(), order:[],
+          picks:0, errors:0, done:false, path:[], cost:0};
+}
+function pr(id){const k=S.kind;return k==='bfs'?S.hops[id]:k==='dfs'?-S.discStep[id]:k==='dijkstra'?S.g[id]:k==='greedy'?H[id]:S.g[id]+H[id];}
+function prShow(id){return S.kind==='dfs'?S.discStep[id]:pr(id);}
+function frontier(){return [...S.disc].filter(x=>!S.exp.has(x));}
+function legalSet(){
+  const f=frontier(); if(!f.length)return new Set();
+  let m=Infinity; for(const x of f)m=Math.min(m,pr(x));
+  return new Set(f.filter(x=>Math.abs(pr(x)-m)<EPS));
+}
+function expandNode(id){
+  S.exp.add(id); S.order.push(id);
+  for(const {to,w} of N[id].adj){ if(S.exp.has(to))continue;
+    if(!S.disc.has(to)){ S.disc.add(to); S.discStep[to]=S.order.length; S.from[to]=id; S.g[to]=S.g[id]+(S.kind==='bfs'?1:w); S.hops[to]=S.hops[id]+1; }
+    else if(S.kind==='dijkstra'||S.kind==='astar'){ const ng=S.g[id]+w; if(ng<S.g[to]){S.g[to]=ng;S.from[to]=id;S.hops[to]=S.hops[id]+1;} } }
+  if(id===L.goal){
+    S.done=true; let k=L.goal; const p=[]; while(k!==undefined){p.push(k);k=S.from[k];} p.reverse();
+    S.path=p; let c=0; for(let i=1;i<p.length;i++)c+=N[p[i-1]].adj.find(a=>a.to===p[i]).w; S.cost=c;
+  }
+}
+let flashLegal=false;
+function handleClick(id){
+  if(phase!=='trace'||S.done) return;
+  if(S.exp.has(id)){ setStatus('That intersection is already expanded. Pick a frontier (yellow) node.','',''); return; }
+  if(!S.disc.has(id)){ S.errors++; setStatus(`${id} isn't on the frontier yet — the robot can only expand an intersection it has already discovered.`,'err'); draw(); return; }
+  // it's a frontier node
+  S.picks++;
+  if(legalSet().has(id)){
+    expandNode(id);
+    if(S.done){ finishTrace(); return; }
+    setStatus(`Expanded ${id}. ✓  Now pick the next frontier node with the ${METRIC[S.kind]}.`,'ok');
+  } else {
+    S.errors++;
+    setStatus(`Not yet — the robot must expand the frontier node with the ${METRIC[S.kind]} first. Valid nodes are highlighted.`,'hint');
+    flashLegal=true; setTimeout(()=>{flashLegal=false;draw();},900);
+  }
+  draw();
+}
+function fmt(x){return Number.isInteger(x)?x:x.toFixed(1);}
+
+// ---- scoring ----
+function metricOf(res){
+  if(!res.found) return Infinity;
+  if(L.objective==='any') return 0;                 // any delivered route is equally acceptable
+  if(L.objective==='hops') return res.path.length-1;
+  return res.cost;
+}
+function optimalMetric(){
+  if(L.objective==='any') return 0;
+  if(L.objective==='hops') return metricOf(refRun('bfs'));
+  return refRun('dijkstra').cost;
+}
+function unit(v){ return L.objective==='hops' ? v+' stop'+(v===1?'':'s') : '$'+v; }
+function choiceScore(){
+  if(L.best.includes(chosen)) return 100;
+  const mine=refRun(chosen);
+  if(mine.found && metricOf(mine)===optimalMetric()) return 60;  // works but not the smart pick
+  return 20;                                                     // suboptimal choice
+}
+function traceScore(){ return S.picks? Math.round(100*S.order.length/(S.order.length+S.errors)) : 0; }
+
+function finishTrace(){
+  phase='result'; draw();
+  const cScore=choiceScore(), tScore=traceScore();
+  let overall=Math.round((cScore+tScore)/2);
+  if(assistUsed) overall=Math.round(overall*0.5);   // Show-priority penalty, this level only
+  if(mode==='endless'){ endlessScores.push(overall); }
+  else { bonusByLevel[L.id]=overall; completed[L.id]=true; }
+  renderBonus();
+  renderResult(cScore,tScore,overall);
+}
+
+// ---- rendering ----
+let hoverId=null;
+function nodeAt(px,py){for(const id in N){if(Math.hypot(N[id].x-px,N[id].y-py)<24)return id;}return null;}
+function draw(){
+  ctx.clearRect(0,0,cv.width,cv.height);
+  // edges
+  const legal = phase==='trace'? legalSet() : new Set();
+  ctx.lineWidth=3;
+  L.edges.forEach(([a,b,w])=>{
+    const A=N[a],B=N[b], ww=w??Math.round(distXY(A,B)/UNIT);
+    const onPath = phase==='result' && S && pathHas(a,b);
+    ctx.strokeStyle=onPath?'#ffcf5c':'#33405c';
+    ctx.beginPath();ctx.moveTo(A.x,A.y);ctx.lineTo(B.x,B.y);ctx.stroke();
+    const mx=(A.x+B.x)/2,my=(A.y+B.y)/2;
+    ctx.fillStyle='#0e1420';ctx.beginPath();ctx.arc(mx,my,11,0,7);ctx.fill();
+    ctx.fillStyle=onPath?'#ffcf5c':'#9fb0cc';ctx.font='bold 12px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(ww,mx,my);
+  });
+  // nodes
+  for(const id in N){
+    const n=N[id]; const isStart=id===L.start,isGoal=id===L.goal;
+    const expanded=S&&S.exp.has(id), front=S&&S.disc.has(id)&&!S.exp.has(id);
+    let fill='#2a3450', ring=null;
+    if(expanded) fill='#4da3ff';
+    if(front) fill='#1c2740';
+    if(isStart) fill=expanded?'#2f9e5b':'#43d17a';
+    if(isGoal) ring='#ff6b6b';
+    if(front) ring='#ffcf5c';
+    if((flashLegal||phase==='trace')&&legal.has(id)) ring=flashLegal?'#ffffff':'#ffcf5c';
+    ctx.beginPath();ctx.arc(n.x,n.y,20,0,7);ctx.fillStyle=fill;ctx.fill();
+    if(ring){ctx.lineWidth=(flashLegal&&legal.has(id))?4:3;ctx.strokeStyle=ring;ctx.stroke();}
+    // dynamic number (expansion order OR frontier priority) stacked ABOVE the letter
+    const dyn = expanded ? '#'+(S.order.indexOf(id)+1) : (front&&assist ? fmt(prShow(id)) : null);
+    const letterColor=(expanded||isStart)?'#04121f':'#e8eef8';
+    if(dyn!==null){
+      ctx.font='bold 11px system-ui';
+      ctx.fillStyle=expanded?'#04121f':'#ffcf5c';
+      ctx.fillText(dyn,n.x,n.y-7);
+      ctx.font='bold 14px system-ui';ctx.fillStyle=letterColor;
+      ctx.fillText(id,n.x,n.y+7);
+    } else {
+      ctx.font='bold 14px system-ui';ctx.fillStyle=letterColor;
+      ctx.fillText(id,n.x,n.y);
+    }
+    // crow-flies h (top-right, faint)
+    if(!isGoal && !L.noHeuristic){ctx.fillStyle='#5f7194';ctx.font='11px system-ui';ctx.fillText('h'+H[id],n.x+22,n.y-16);}
+    // name label
+    if(n.name){ctx.fillStyle='#8698b4';ctx.font='11px system-ui';ctx.fillText(n.name,n.x,n.y+34);}
+  }
+}
+function pathHas(a,b){for(let i=1;i<S.path.length;i++){if((S.path[i-1]===a&&S.path[i]===b)||(S.path[i-1]===b&&S.path[i]===a))return true;}return false;}
+
+cv.addEventListener('click',e=>{
+  const r=cv.getBoundingClientRect();
+  const id=nodeAt(e.clientX-r.left,e.clientY-r.top);
+  if(id) handleClick(id);
+});
+
+// ---- side panel by phase ----
+const side=document.getElementById('side');
+function setStatus(msg,cls){const s=document.getElementById('statusBox');if(s){s.className='status '+(cls||'');s.textContent=msg;}}
+
+function renderBrief(){
+  phase='brief';
+  side.innerHTML=`<div class="card">
+    <h2>${L.title}</h2>
+    <div class="brief"><p>${L.brief}</p></div>
+    <p style="margin-top:10px">The map shows road costs (on each road) and each intersection's straight-line distance to the customer (grey <b>h</b>). Ready?</p>
+    <div class="row"><button class="primary" id="go">Start shift →</button></div>
+  </div>`;
+  document.getElementById('go').onclick=renderChoose;
+  draw();
+}
+function renderChoose(){
+  phase='choose'; chosen=null;
+  side.innerHTML=`<div class="card">
+    <h2>Step 1 · Choose the robot's algorithm</h2>
+    <p>Which search strategy fits this delivery? Pick wisely — it affects your bonus.</p>
+    <div class="algos" id="algos"></div>
+  </div>`;
+  const box=document.getElementById('algos');
+  for(const k of ['bfs','dfs','dijkstra','greedy','astar']){
+    const b=document.createElement('button');b.className='algo';
+    const off=L.noHeuristic&&(k==='greedy'||k==='astar');
+    b.innerHTML=`<b>${NAMES[k]}</b><small>${off?'⚠ Needs a distance estimate — GPS is offline this shift.':ALGO_DESC[k]}</small>`;
+    if(off){b.disabled=true;} else {b.onclick=()=>{chosen=k;renderTrace();};}
+    box.appendChild(b);
+  }
+  draw();
+}
+function renderTrace(){
+  phase='trace'; S=newTrace(chosen);
+  side.innerHTML=`<div class="card">
+    <h2>Step 2 · Trace ${NAMES[chosen]}</h2>
+    <p>Click intersections in the exact order the robot <b>expands</b> them. Rule: always expand the frontier node with the <span class="metricname">${METRIC[chosen]}</span>. Start at the depot.</p>
+    <div class="status" id="statusBox">Click the depot (${L.start}) to expand it first.</div>
+    <div class="row" style="margin-top:12px">
+      <label class="switch"><input type="checkbox" id="assist"><span class="track"></span> Show priority <small style="color:var(--warn)">(×0.5 score this level)</small></label>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button id="restart">↺ Restart trace</button>
+      <button id="rechoose">← Change algorithm</button>
+    </div>
+  </div>`;
+  const asw=document.getElementById('assist'); asw.checked=assist;
+  asw.onchange=()=>{assist=asw.checked; if(assist) assistUsed=true; renderBonus(); draw();};
+  document.getElementById('restart').onclick=renderTrace;
+  document.getElementById('rechoose').onclick=renderChoose;
+  draw();
+}
+function renderResult(cScore,tScore,overall){
+  const mine=refRun(chosen); const optM=optimalMetric(); const mineM=metricOf(mine);
+  const isOpt=mine.found&&mineM===optM;
+  const recommended=L.best.map(k=>NAMES[k]).join(' / ');
+  const objWord=L.objective==='any'?'a valid route':L.objective==='hops'?'route with the fewest stops':'cheapest route';
+  let verdict='';
+  if(L.best.includes(chosen)){
+    verdict=`✅ <b>${NAMES[chosen]}</b> was the right call. ${L.why}`;
+  } else if(isOpt){
+    verdict=`🟡 <b>${NAMES[chosen]}</b> still found the ${objWord}, but it wasn't the smartest pick here. Better: <b>${recommended}</b>. ${L.why}`;
+  } else {
+    verdict=`❌ <b>${NAMES[chosen]}</b> gave ${unit(mineM)} vs the best ${unit(optM)}. The right pick was <b>${recommended}</b>. ${L.why}`;
+  }
+  const dj=refRun('dijkstra'), as=refRun('astar'), bf=refRun('bfs'), df=refRun('dfs');
+  const refLine = L.objective==='any'
+    ? `Peak memory (largest frontier held at once): DFS just <b>${df.maxFront}</b> intersection${df.maxFront===1?'':'s'} vs BFS's <b>${bf.maxFront}</b> — DFS only remembers its current branch.`
+    : L.objective==='hops'
+    ? `For reference — BFS reaches the customer in ${metricOf(bf)} stops (optimal); Dijkstra's cheapest-distance route takes ${metricOf(dj)} stops.`
+    : `For reference — Dijkstra expands ${dj.expanded}, A* expands ${as.expanded} (both optimal ${unit(optM)}).`;
+  const yourRoute = L.objective==='any' ? `Delivered via a <b>${mine.path.length-1}-stop</b> route`
+    : L.objective==='hops' ? `Route uses <b>${mineM} stops</b>` : `Route cost <b>$${mine.cost}</b>`;
+  let endlessCkptHtml='', navHtml='', endlessFailed=false;
+  if(mode==='endless'){
+    const t=endlessTier(endlessLevelNum);
+    if(t.isEnd && t.have<t.needed){
+      endlessFailed=true;
+      endlessCkptHtml=`<div class="verdict" style="border:1px solid var(--bad);color:var(--bad);margin-top:10px">🚫 Checkpoint missed at Level ${t.checkpointLevel}: you scored <b>${sc(t.have)}</b> of the <b>${sc(t.needed)}</b> needed (${t.reqPct}% of perfect). Your run ends here — you reached Level ${endlessLevelNum}.</div>`;
+      navHtml=`<button class="primary" id="restart">↻ New endless run</button>`;
+    } else if(t.isEnd){
+      endlessCkptHtml=`<div class="verdict" style="border:1px solid var(--good);color:var(--good);margin-top:10px">✅ Checkpoint cleared at Level ${t.checkpointLevel}: ${sc(t.have)}/${sc(t.needed)}. The bar rises next tier.</div>`;
+      navHtml=`<button class="primary" id="next">Next delivery →</button>`;
+    } else {
+      endlessCkptHtml=`<p style="margin-top:8px;color:var(--muted)">Checkpoint at Level ${t.checkpointLevel}: <b>${t.have}/${t.needed}</b> pts so far · ${t.levelsLeft} level${t.levelsLeft===1?'':'s'} to go.</p>`;
+      navHtml=`<button class="primary" id="next">Next delivery →</button>`;
+    }
+  } else {
+    navHtml=(curIdx<LEVELS.length-1?'<button class="primary" id="next">Next delivery →</button>':'<button class="primary" id="next">Finish shift 🎉</button>')+'<button id="redo">Redo this level</button>';
+  }
+  side.innerHTML=`<div class="card">
+    <h2>Delivery report — ${L.title.split('— ')[1]}</h2>
+    <div class="scores">
+      <div class="score"><div class="v" style="color:${cScore>=100?'var(--good)':cScore>=60?'var(--warn)':'var(--bad)'}">${sc(cScore)}</div><div class="k">algorithm choice</div></div>
+      <div class="score"><div class="v" style="color:${tScore>=90?'var(--good)':tScore>=60?'var(--warn)':'var(--bad)'}">${sc(tScore)}</div><div class="k">trace accuracy</div></div>
+      <div class="score"><div class="v">${sc(overall)}</div><div class="k">shift score</div></div>
+    </div>
+    <div class="verdict">${verdict}</div>
+    ${assistUsed?'<p style="color:var(--warn);margin-top:8px">⚠ Show priority was used — shift score halved (×0.5).</p>':''}
+    ${endlessCkptHtml}
+    <p style="margin-top:10px">Your trace: expanded <b>${S.order.length}</b> intersections${S.errors?`, with <b>${S.errors}</b> mis-clicks`:' with a perfect sequence'}. ${yourRoute}.</p>
+    <p>${refLine}</p>
+    <div class="row" style="margin-top:6px">
+      ${navHtml}
+      <button id="menu">Menu</button>
+    </div>
+  </div>`;
+  document.getElementById('menu').onclick=renderStart;
+  if(mode==='endless' && endlessFailed){
+    document.getElementById('restart').onclick=()=>{ endlessLevelNum=1; endlessScores=[]; loadEndless(); };
+  } else {
+    document.getElementById('next').onclick=()=>{
+      if(mode==='endless'){ endlessLevelNum++; loadEndless(); }
+      else if(curIdx<LEVELS.length-1) loadLevel(curIdx+1); else renderFinale();
+    };
+    const rd=document.getElementById('redo'); if(rd) rd.onclick=()=>loadLevel(curIdx);
+  }
+  draw();
+}
+function renderFinale(){
+  const scores=Object.values(bonusByLevel); const avg=Math.round(scores.reduce((a,b)=>a+b,0)/scores.length);
+  const bonus=Math.round(avg/100*5000);
+  side.innerHTML=`<div class="card"><h2>🎉 End of year</h2>
+    <p>Across ${scores.length} deliveries you averaged <b>${sc(avg)}/10,000</b>.</p>
+    <div class="score" style="margin:12px 0"><div class="v amt" style="color:var(--good);font-size:30px">$${bonus.toLocaleString()}</div><div class="k">bonus earned (of $5,000)</div></div>
+    <p>${avg>=90?'Outstanding — you clearly know which algorithm fits which map.':avg>=70?'Solid work. Revisit the levels where greedy or BFS tripped you up.':'Keep practicing — replay and watch how cost-so-far vs. crow-flies distance change the robot\'s choices.'}</p>
+    <p style="margin-top:4px">Ready for a real challenge? Endless Mode generates fresh districts that keep getting harder.</p>
+    <div class="row">
+      <button class="primary" id="finEndless">♾️ Continue in Endless</button>
+      <button id="finReplay">Replay levels</button>
+      <button id="finMenu">Menu</button>
+    </div>
+  </div>`;
+  document.getElementById('finEndless').onclick=()=>{ mode='endless'; endlessLevelNum=1; endlessScores=[]; loadEndless(); };
+  document.getElementById('finReplay').onclick=()=>{ mode='level'; loadLevel(0); };
+  document.getElementById('finMenu').onclick=renderStart;
+}
+
+// ---- level flow ----
+let curIdx=0;
+const PERFECT_PER_LEVEL=100, TIER_SIZE=5;
+const sc=v=>Math.round(v*100).toLocaleString();   // display scores ×100 (aesthetic)
+function objectiveBadge(Lv){
+  if(Lv.noHeuristic) return {t:'📡 GPS down · fewest blocks', c:'#b57bff'};
+  if(Lv.objective==='hops') return {t:'📦 Fewest stops', c:'#ff9f5c'};
+  if(Lv.objective==='any') return {t:'🧠 Any route · low memory', c:'#43d17a'};
+  return {t:'💰 Cheapest route', c:'#4da3ff'};
+}
+// tier bookkeeping for a just-completed (or in-progress) endless level number
+function endlessTier(num){
+  const idx=Math.floor((num-1)/TIER_SIZE);
+  const reqPct=Math.min(100,20+idx*20);
+  const have=endlessScores.slice(idx*TIER_SIZE, num).reduce((a,b)=>a+b,0);
+  const needed=Math.round(reqPct/100*TIER_SIZE*PERFECT_PER_LEVEL);
+  const done=num-idx*TIER_SIZE;
+  return {idx,reqPct,have,needed,isEnd:(num%TIER_SIZE===0),checkpointLevel:(idx+1)*TIER_SIZE,levelsLeft:TIER_SIZE-done};
+}
+function updateHUD(){
+  const badge=document.getElementById('objBadge'), ck=document.getElementById('ckpt');
+  if(!L||mode===null){ badge.style.display='none'; ck.textContent=''; return; }
+  const b=objectiveBadge(L);
+  badge.style.display='inline-block'; badge.textContent=b.t; badge.style.color=b.c; badge.style.borderColor=b.c;
+  if(mode==='endless'){
+    const idx=Math.floor((endlessLevelNum-1)/TIER_SIZE);
+    const reqPct=Math.min(100,20+idx*20);
+    const have=endlessScores.slice(idx*TIER_SIZE).reduce((a,c)=>a+c,0);
+    const needed=Math.round(reqPct/100*TIER_SIZE*PERFECT_PER_LEVEL);
+    ck.innerHTML=`checkpoint · by Lv ${(idx+1)*TIER_SIZE}<br><b>${sc(have)} / ${sc(needed)}</b> · ${reqPct}% of perfect`;
+  } else ck.textContent='';
+}
+function renderBonus(){
+  const amtEl=document.getElementById('bonusAmt');
+  const pips=document.getElementById('pips');
+  const lbl=document.querySelector('.bonus .lbl');
+  amtEl.style.color=assistUsed?'var(--warn)':'var(--good)';
+  updateHUD();
+  if(mode==='endless'){
+    pips.innerHTML='';
+    const avg=endlessScores.length?Math.round(endlessScores.reduce((a,b)=>a+b,0)/endlessScores.length):null;
+    amtEl.textContent=avg===null?'—':sc(avg);
+    if(lbl) lbl.textContent=`endless · level ${endlessLevelNum}`;
+    return;
+  }
+  if(lbl) lbl.textContent='projected year-end bonus';
+  const scores=Object.values(bonusByLevel);
+  const avg=scores.length?scores.reduce((a,b)=>a+b,0)/scores.length:0;
+  amtEl.textContent='$'+Math.round(avg/100*5000).toLocaleString();
+  pips.innerHTML='';
+  LEVELS.forEach((lv,i)=>{const d=document.createElement('div');d.className='pip'+(completed[lv.id]?' done':i===curIdx?' cur':'');pips.appendChild(d);});
+}
+function loadLevelObj(obj){
+  L=obj; buildGraph(); S=null; chosen=null; assist=false; assistUsed=false;
+  renderBonus(); renderBrief();
+}
+function loadLevel(i){ curIdx=i; loadLevelObj(LEVELS[i]); }
+function loadEndless(){ loadLevelObj(generateEndlessLevel(endlessLevelNum)); }
+
+function renderStart(){
+  mode=null; phase='start';
+  ctx.clearRect(0,0,cv.width,cv.height);
+  document.getElementById('pips').innerHTML='';
+  const amtEl=document.getElementById('bonusAmt'); amtEl.textContent=''; amtEl.style.color='var(--good)';
+  const lbl=document.querySelector('.bonus .lbl'); if(lbl) lbl.textContent='';
+  updateHUD();
+  side.innerHTML=`<div class="card">
+    <h2>Welcome to RouteRunner</h2>
+    <p>You're the new delivery coordinator. Choose how you want to work your shift:</p>
+    <div class="algos">
+      <button class="algo" id="mLevel"><b>📋 Level Mode</b><small>${LEVELS.length} hand-crafted districts, each teaching one lesson. Great for learning.</small></button>
+      <button class="algo" id="mEndless"><b>♾️ Endless Mode</b><small>Endlessly generated districts that grow as you go. Keep your average rating high!</small></button>
+    </div>
+  </div>`;
+  document.getElementById('mLevel').onclick=()=>{ mode='level'; loadLevel(0); };
+  document.getElementById('mEndless').onclick=()=>{ mode='endless'; endlessLevelNum=1; endlessScores=[]; loadEndless(); };
+}
+
+// ================= Endless generator =================
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+const DISTRICTS=['Downtown','Riverside','Old Town','the Docks','Midtown','Hillcrest','the Financial District','Greenwood','Sunset Flats','the Warehouse Quarter'];
+
+function connect(nodes,edges,seen,key){
+  const parent={}; nodes.forEach(n=>parent[n.id]=n.id);
+  const find=x=>parent[x]===x?x:(parent[x]=find(parent[x]));
+  edges.forEach(([a,b])=>{parent[find(a)]=find(b);});
+  let guard=0;
+  while(guard++<nodes.length+2){
+    const comps={}; nodes.forEach(n=>{const r=find(n.id);(comps[r]=comps[r]||[]).push(n);});
+    const keys=Object.keys(comps); if(keys.length<=1) break;
+    const A=comps[keys[0]]; let pair=null,bd=Infinity;
+    for(const na of A) for(let k=1;k<keys.length;k++) for(const nb of comps[keys[k]]){
+      const d=distXY(na,nb); if(d<bd){bd=d;pair=[na.id,nb.id];}
+    }
+    const kk=key(pair[0],pair[1]); if(!seen.has(kk)){seen.add(kk);edges.push(pair);}
+    parent[find(pair[0])]=find(pair[1]);
+  }
+}
+
+function genCandidate(nodeCount,opts={}){
+  const X0=90,X1=650,Y0=80,Y1=405;
+  const cols=Math.max(3,Math.round(Math.sqrt(nodeCount*1.7)));
+  const rows=Math.ceil(nodeCount/cols);
+  const cells=[]; for(let r=0;r<rows;r++)for(let c=0;c<cols;c++)cells.push({r,c});
+  shuffle(cells);
+  const cw=(X1-X0)/cols, ch=(Y1-Y0)/rows;
+  const ids='ABCDEFGHIJKLMN'.split('');
+  const nodes=cells.slice(0,nodeCount).map((cell,i)=>({
+    id:ids[i],
+    x:Math.round(X0+cell.c*cw+cw*(0.28+0.44*Math.random())),
+    y:Math.round(Y0+cell.r*ch+ch*(0.28+0.44*Math.random())),
+  }));
+  nodes.sort((a,b)=>a.x-b.x);
+  const start=nodes[0].id, goal=nodes[nodes.length-1].id;
+  nodes[0].name='Depot'; nodes[nodes.length-1].name='Customer';
+  const byId=Object.fromEntries(nodes.map(n=>[n.id,n]));
+  const edges=[], seen=new Set(); const key=(a,b)=>a<b?a+'|'+b:b+'|'+a;
+  for(const n of nodes){
+    const others=nodes.filter(m=>m.id!==n.id).map(m=>({id:m.id,d:distXY(n,m)})).sort((a,b)=>a.d-b.d);
+    const k=2+(Math.random()<0.5?1:0);
+    for(let j=0;j<Math.min(k,others.length);j++){
+      const b=others[j].id;
+      if((n.id===start&&b===goal)||(n.id===goal&&b===start)) continue; // no trivial direct road
+      const kk=key(n.id,b); if(seen.has(kk))continue; seen.add(kk); edges.push([n.id,b]);
+    }
+  }
+  connect(nodes,edges,seen,key);
+  const congestion=opts.congestion??0.3;
+  const E=edges.map(([a,b])=>{
+    if(opts.uniform) return [a,b,1];
+    let w=Math.max(1,Math.round(distXY(byId[a],byId[b])/UNIT));
+    if(Math.random()<congestion) w=Math.max(w+1,Math.round(w*(1.6+Math.random())));  // congestion
+    return [a,b,w];
+  });
+  return {nodes,edges:E,start,goal,objective:'cost'};
+}
+
+// A branching tree with long culs-de-sac: makes DFS's peak memory << BFS's.
+function genBushyCandidate(nodeCount){
+  const ids='ABCDEFGHIJKLMN'.split('');
+  const nodes=[{id:ids[0]}]; const parentOf={};
+  let idx=1; const q=[0];
+  while(idx<nodeCount && q.length){
+    const p=q.shift(); const r=Math.random(); const b=(r<0.55?2:r<0.9?3:1);
+    for(let c=0;c<b && idx<nodeCount;c++){ const ci=idx++; nodes.push({id:ids[ci]}); parentOf[ids[ci]]=nodes[p].id; q.push(ci); }
+  }
+  const depth=id=>{let d=0,x=id;while(parentOf[x]!=null){x=parentOf[x];d++;}return d;};
+  const byDepth={}; nodes.forEach(n=>{const d=depth(n.id);(byDepth[d]=byDepth[d]||[]).push(n);n._d=d;});
+  const maxD=Math.max(...nodes.map(n=>n._d));
+  const X0=90,X1=650,Y0=80,Y1=405, dx=(X1-X0)/Math.max(1,maxD);
+  Object.keys(byDepth).forEach(d=>{const arr=byDepth[d],gap=(Y1-Y0)/(arr.length+1);
+    arr.forEach((n,i)=>{n.x=Math.round(X0+d*dx);n.y=Math.round(Y0+gap*(i+1));});});
+  const parents=new Set(Object.values(parentOf));
+  const leaves=nodes.filter(n=>!parents.has(n.id));
+  const goal=leaves.reduce((a,b)=>b._d>a._d?b:a,leaves[0]).id;
+  const start=nodes[0].id;
+  nodes[0].name='Depot'; nodes.find(n=>n.id===goal).name='Customer';
+  const edges=[]; nodes.forEach(n=>{if(parentOf[n.id]!=null)edges.push([parentOf[n.id],n.id,1]);});
+  nodes.forEach(n=>{delete n._d;});
+  return {nodes,edges,start,goal,objective:'any'};
+}
+
+const nm=arr=>arr.map(k=>NAMES[k]).join(' / ');
+
+// Decide the recommended algorithm(s), teaching contrast, and explanation.
+function classify(objective,R,cand,num,nodeCount){
+  if(objective==='hops'){
+    const bfsH=R.bfs.path.length-1, djH=R.dijkstra.path.length-1;
+    return {num,nodeCount,objective,best:['bfs'],contrast:R.bfs.found&&djH>bfsH,
+      why:`Fewest stops is the goal, so expand by roads-crossed — that's BFS (${bfsH} stops). Dijkstra chases the cheapest distance and takes ${djH} stops, risking the fragile cargo.`};
+  }
+  if(objective==='any'){
+    return {num,nodeCount,objective,best:['dfs'],contrast:R.dfs.maxFront<=R.bfs.maxFront-2,
+      why:`Any route works and memory is tight: DFS holds just ${R.dfs.maxFront} intersections at once versus BFS's ${R.bfs.maxFront}, because it only remembers its current branch.`};
+  }
+  if(cand.noHeuristic){ // uniform grid, GPS off
+    const optCost=R.dijkstra.cost;
+    return {num,nodeCount,objective:'cost',best:['bfs'],contrast:R.dfs.found&&R.dfs.cost>optCost,
+      why:`Uniform blocks with GPS down: cheapest = fewest blocks, so BFS is the lean optimal tool. Dijkstra reaches the same answer with needless overhead, while DFS can wander into a longer ${R.dfs.cost}-block route.`};
+  }
+  // cost
+  const optCost=R.dijkstra.cost, guaranteed=['dijkstra','astar'];
+  const minExp=Math.min(...guaranteed.map(k=>R[k].expanded));
+  const best=guaranteed.filter(k=>R[k].expanded===minExp);
+  const astarPrunes=R.astar.expanded<=R.dijkstra.expanded-Math.max(2,Math.ceil(0.25*R.dijkstra.expanded));
+  const greedyTrap=R.greedy.found&&R.greedy.cost>optCost;
+  let why='';
+  if(greedyTrap) why+=`Greedy is fooled by straight-line distance and takes a $${R.greedy.cost} route instead of the optimal $${optCost}. `;
+  if(astarPrunes) why+=`${nm(best)} finds the cheapest route while expanding only ${R.astar.expanded} intersections vs Dijkstra's ${R.dijkstra.expanded} — the heuristic keeps it aimed at the customer.`;
+  if(!why) why='Both Dijkstra and A* guarantee the cheapest route; with no directional shortcut they perform similarly.';
+  return {num,nodeCount,objective:'cost',best,contrast:astarPrunes||greedyTrap,why};
+}
+
+function finalizeEndless(cand,spec){
+  const district=DISTRICTS[Math.floor(Math.random()*DISTRICTS.length)];
+  const num=spec.num, nc=cand.nodes.length, o=spec.objective;
+  let brief;
+  if(o==='hops') brief=`Fragile cargo across a ${nc}-intersection stretch of ${district}: every stop risks damage. Reach the customer (${cand.goal}) crossing the FEWEST intersections — distance doesn't matter.`;
+  else if(o==='any') brief=`A low-memory warehouse robot must reach the pickup (${cand.goal}) in ${district} (${nc} intersections). Any route works — it just can't hold a big map in memory.`;
+  else if(cand.noHeuristic) brief=`Uniform grid in ${district} (${nc} intersections) and GPS is down — no distance estimate. Reach the customer (${cand.goal}) in the fewest blocks.`;
+  else brief=`A ${nc}-intersection stretch of ${district}. Deliver from the depot (${cand.start}) to the customer (${cand.goal}) at the lowest total road cost — watch for congested roads.`;
+  return {...cand, id:'endless-'+num, title:`Endless · Level ${num} — ${district}`, brief, best:spec.best, why:spec.why};
+}
+
+const OBJ_ROTATION=['cost','hops','noHeuristic','any'];
+function generateEndlessLevel(num){
+  const nodeCount=Math.min(6+(num-1),14);
+  const objective=OBJ_ROTATION[(num-1)%OBJ_ROTATION.length];
+  let fallback=null;
+  for(let attempt=0;attempt<400;attempt++){
+    let cand;
+    if(objective==='any') cand=genBushyCandidate(nodeCount);
+    else if(objective==='hops') cand=genCandidate(nodeCount,{congestion:0.5});
+    else if(objective==='noHeuristic'){ cand=genCandidate(nodeCount,{uniform:true}); cand.noHeuristic=true; }
+    else cand=genCandidate(nodeCount,{congestion:0.35});
+    L=cand; buildGraph();
+    const R={}; for(const k of ['bfs','dfs','dijkstra','greedy','astar']) R[k]=refRun(k);
+    if(!R.dijkstra.found) continue;
+    const spec=classify(objective,R,cand,num,nodeCount);
+    if(!fallback) fallback=finalizeEndless(cand,spec);
+    if(spec.contrast) return finalizeEndless(cand,spec);
+  }
+  return fallback;
+}
+
+renderStart();
+</script>
+</body>
+</html>

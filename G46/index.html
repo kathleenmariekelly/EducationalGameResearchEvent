@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CIPHERPUNK — Zone 1: The Tunnels</title>
+<style>
+  :root{
+    --bg:#0a0e14; --panel:#12181f; --panel2:#1b2430; --ink:#e6edf3;
+    --muted:#8b949e; --accent:#39d353; --accent2:#58a6ff; --warn:#f85149;
+    --gold:#e3b341; --border:#2b3440;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; font-family:"Segoe UI",system-ui,sans-serif; color:var(--ink);
+    background:radial-gradient(circle at 50% -20%,#132030,#05070a 70%);
+    display:flex; flex-direction:column; align-items:center; user-select:none;
+  }
+  h1{ letter-spacing:3px; margin:14px 0 2px; font-size:1.6rem }
+  h1 .g{ color:var(--accent) }
+  .sub{ color:var(--muted); margin:0 0 8px; font-size:.85rem }
+  #stage{ position:relative; }
+  canvas{ background:#05070a; border:1px solid var(--border); border-radius:10px;
+    box-shadow:0 12px 40px rgba(0,0,0,.5); image-rendering:auto; }
+  .prompt{ position:absolute; bottom:8px; left:50%; transform:translateX(-50%);
+    background:rgba(10,14,20,.9); border:1px solid var(--accent2); color:var(--accent2);
+    padding:4px 12px; border-radius:999px; font-size:.8rem; white-space:nowrap; }
+  /* overlays */
+  .overlay{ position:absolute; inset:0; display:none; align-items:center; justify-content:center;
+    background:rgba(5,7,10,.82); border-radius:10px; padding:18px; }
+  .overlay.show{ display:flex }
+  .box{ background:var(--panel); border:1px solid var(--border); border-radius:14px;
+    padding:20px; max-width:560px; width:100%; box-shadow:0 10px 40px rgba(0,0,0,.5) }
+  .speaker{ color:var(--accent); font-weight:700; letter-spacing:1px; margin-bottom:6px; font-size:.9rem }
+  .speaker.flock{ color:var(--warn) } .speaker.sys{ color:var(--gold) } .speaker.you{ color:var(--accent2) }
+  .dtext{ font-size:1.02rem; line-height:1.5; min-height:3em; white-space:pre-wrap }
+  .cont{ text-align:right; color:var(--muted); font-size:.8rem; margin-top:10px }
+  .cipher{ font-family:Consolas,monospace; font-size:1.25rem; letter-spacing:3px; color:var(--accent);
+    background:#05070a; border:1px dashed var(--accent2); padding:12px; border-radius:8px;
+    text-align:center; margin:12px 0; word-break:break-word }
+  button{ font:inherit; cursor:pointer; border:1px solid var(--border); background:var(--panel2);
+    color:var(--ink); padding:11px 16px; border-radius:10px; transition:.12s; margin:4px 0 }
+  button:hover:not(:disabled){ border-color:var(--accent2); transform:translateY(-1px) }
+  button:disabled{ opacity:.5; cursor:default }
+  button.primary{ background:var(--accent); color:#03210f; border-color:var(--accent); font-weight:700 }
+  .btns{ display:flex; flex-direction:column; gap:2px; margin-top:8px }
+  input[type=text]{ width:100%; font:inherit; padding:11px; border-radius:10px; letter-spacing:2px;
+    border:1px solid var(--border); background:#05070a; color:var(--ink); text-transform:uppercase; margin-top:6px }
+  .wheel{ display:flex; align-items:center; gap:14px; margin:14px 0 }
+  .wheel input[type=range]{ flex:1 }
+  .shiftnum{ font-family:monospace; color:var(--gold); font-size:1.3rem; min-width:2.2em; text-align:center }
+  .fb{ margin-top:10px; padding:9px 12px; border-radius:9px; font-weight:600; min-height:1.1em; font-size:.95rem }
+  .ok{ background:rgba(57,211,83,.12); color:var(--accent); border:1px solid var(--accent) }
+  .no{ background:rgba(248,81,73,.12); color:var(--warn); border:1px solid var(--warn) }
+  .muted{ color:var(--muted); font-size:.85rem }
+  .close{ margin-top:12px }
+  /* battle */
+  .hpwrap{ margin:6px 0 }
+  .hplabel{ display:flex; justify-content:space-between; font-size:.85rem; margin-bottom:3px }
+  .hpbar{ height:12px; background:#05070a; border:1px solid var(--border); border-radius:999px; overflow:hidden }
+  .hpbar>i{ display:block; height:100%; transition:width .4s }
+  .hp-you>i{ background:var(--accent) } .hp-foe>i{ background:var(--warn) }
+  .foe{ text-align:center; font-size:3.2rem; margin:2px 0 }
+  .atkgrid{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-top:8px }
+  .atkgrid button{ display:flex; flex-direction:column; align-items:center; gap:2px }
+  .atkgrid small{ color:var(--muted); font-size:.72rem }
+  .primary small{ color:#0a3d1c }
+  .log{ font-size:.9rem; color:var(--muted); min-height:1.2em; margin:8px 0; text-align:center }
+  .footer{ color:var(--muted); font-size:.72rem; margin:8px 0 14px; text-align:center }
+  kbd{ background:var(--panel2); border:1px solid var(--border); border-bottom-width:2px;
+    border-radius:5px; padding:1px 6px; font-family:monospace; font-size:.8rem }
+  .alpha{ display:grid; grid-template-columns:repeat(26,1fr); gap:1px; margin:4px 0 2px }
+  .alpha div{ text-align:center; background:#05070a; border:1px solid var(--border); border-radius:3px; padding:2px 0 }
+  .alpha b{ display:block; color:var(--accent2); font-size:.72rem; font-weight:700 }
+  .alpha span{ color:var(--muted); font-size:.58rem }
+</style>
+</head>
+<body>
+  <h1><span class="g">◈</span> CIPHER<span class="g">PUNK</span></h1>
+  <p class="sub">ZONE 1 — THE TUNNELS · lesson: the Caesar cipher</p>
+  <div id="stage">
+    <canvas id="cv" width="624" height="432"></canvas>
+    <div class="prompt" id="prompt" style="display:none"></div>
+    <div class="overlay" id="overlay"><div class="box" id="box"></div></div>
+  </div>
+  <p class="footer">Move <kbd>← ↑ ↓ →</kbd> or <kbd>WASD</kbd> · Interact / advance <kbd>Space</kbd> or <kbd>Enter</kbd></p>
+
+<script>
+/* =================================================================
+   CIPHERPUNK — Zone 1 vertical slice
+   ================================================================= */
+
+/* ---------- Caesar engine ---------- */
+const AL="ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+const enc=(t,s)=>t.toUpperCase().replace(/[A-Z]/g,c=>AL[(AL.indexOf(c)+s+26)%26]);
+const dec=(t,s)=>enc(t,-s);
+const norm=t=>t.toUpperCase().replace(/[^A-Z]/g,"");
+/* reference alphabet strip (A-Z + index 0-25) */
+function alphaStrip(){ let c=""; for(let i=0;i<26;i++)c+=`<div><b>${AL[i]}</b><span>${i}</span></div>`; return `<div class="alpha">${c}</div>`; }
+
+/* ---------- map ---------- */
+const MAP=[
+  "#############",
+  "#.D...W...T.#",
+  "#...........#",
+  "#.C...P.....#",
+  "#...........#",
+  "#...K....E..#",
+  "#..........BG",
+  "#.@.........#",
+  "#############",
+];
+const COLS=MAP[0].length, ROWS=MAP.length, TS=48;
+const OBJ={ D:"👾", W:"🖋️", T:"🖥️", C:"🎡", P:"📟", K:"🔒", E:"🎁", B:"🤖", G:"🚪" };
+const isWall=ch=>ch==="#";
+const isObj =ch=>OBJ[ch]&&ch!=="G";
+
+/* object grid + player */
+let grid=MAP.map(r=>r.split(""));
+let player={x:2,y:7,dir:"up"};
+let flags={ keypadSolved:false, bossDefeated:false, met:false };
+
+/* ---------- canvas ---------- */
+const cv=document.getElementById("cv"), ctx=cv.getContext("2d");
+function draw(){
+  ctx.clearRect(0,0,cv.width,cv.height);
+  for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){
+    const ch=grid[y][x], px=x*TS, py=y*TS;
+    if(isWall(ch)){
+      ctx.fillStyle="#1b2430"; ctx.fillRect(px,py,TS,TS);
+      ctx.fillStyle="#232f3d"; ctx.fillRect(px+3,py+3,TS-6,10);
+      ctx.fillStyle="#0e6b2e"; ctx.fillRect(px+TS-9,py+6,3,3);
+    }else{
+      ctx.fillStyle="#0d141c"; ctx.fillRect(px,py,TS,TS);
+      ctx.strokeStyle="#131c26"; ctx.strokeRect(px+.5,py+.5,TS-1,TS-1);
+    }
+    if(ch==="G"){ // gate
+      ctx.font="30px serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+      ctx.globalAlpha=flags.bossDefeated?1:.5;
+      ctx.fillText(flags.bossDefeated?"🚪":"⛔",px+TS/2,py+TS/2+2); ctx.globalAlpha=1;
+    }else if(isObj(ch)){
+      ctx.font="30px serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+      if(ch==="E"&&!flags.bossDefeated) ctx.globalAlpha=.55;
+      ctx.fillText(OBJ[ch],px+TS/2,py+TS/2+2); ctx.globalAlpha=1;
+    }
+  }
+  // player
+  ctx.font="30px serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillText("🕵️",player.x*TS+TS/2,player.y*TS+TS/2+2);
+  updatePrompt();
+}
+function updatePrompt(){
+  const p=document.getElementById("prompt");
+  if(gameState!=="explore"){ p.style.display="none"; return; }
+  const f=faced();
+  if(f&&(isObj(f.ch)||f.ch==="G")){ p.style.display="block"; p.textContent="▸ "+label(f.ch)+"  ·  SPACE"; }
+  else p.style.display="none";
+}
+function label(ch){return {D:"DAEMON",W:"Graffiti wall",T:"Practice terminal",C:"Decoder wheel",
+  P:"Corrupted datapad",K:"Access keypad",E:"Sealed cache",B:"Enforcement drone",G:"Tunnel gate"}[ch]||"";}
+
+/* ---------- movement ---------- */
+const DIRS={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]};
+function faced(){ const[dx,dy]=DIRS[player.dir]; const x=player.x+dx,y=player.y+dy;
+  if(x<0||y<0||x>=COLS||y>=ROWS)return null; return{x,y,ch:grid[y][x]}; }
+function move(dir){
+  player.dir=dir; const[dx,dy]=DIRS[dir]; const x=player.x+dx,y=player.y+dy;
+  const ch=grid[y]?.[x];
+  if(ch===undefined||isWall(ch)||isObj(ch)){ draw(); return; } // blocked (objects solid)
+  if(ch==="G"){ if(flags.bossDefeated){ zoneComplete(); } draw(); return; }
+  player.x=x; player.y=y; draw();
+}
+
+/* ---------- interaction dispatch ---------- */
+function interact(){
+  const f=faced(); if(!f) return;
+  switch(f.ch){
+    case"D":talkDaemon();break; case"W":talkGraffiti();break; case"T":practiceTerminal();break;
+    case"C":decoderWheel();break; case"P":datapad();break; case"K":keypad();break;
+    case"E":cache();break; case"B":bossApproach();break; case"G":gateTry();break;
+  }
+}
+
+/* =================================================================
+   DIALOGUE SYSTEM
+   ================================================================= */
+let gameState="explore";
+const overlay=document.getElementById("overlay"), box=document.getElementById("box");
+function openOverlay(html){ box.innerHTML=html; overlay.classList.add("show"); gameState="modal"; }
+function closeOverlay(){ overlay.classList.remove("show"); gameState="explore"; draw(); }
+
+let dq=[], dqDone=null, dqi=0;
+function say(pages,onDone){ dq=pages; dqi=0; dqDone=onDone||null; gameState="dialogue"; renderSay(); overlay.classList.add("show"); }
+function renderSay(){
+  const p=dq[dqi];
+  box.innerHTML=`<div class="speaker ${p.cls||''}">${p.who||"DAEMON"}</div>
+    <div class="dtext">${p.text}</div>
+    <div class="cont">${dqi<dq.length-1?"▸ SPACE":"▸ SPACE to close"}</div>`;
+}
+function advanceSay(){
+  dqi++;
+  if(dqi>=dq.length){ overlay.classList.remove("show"); gameState="explore";
+    const cb=dqDone; dqDone=null; if(cb)cb(); else draw(); }
+  else renderSay();
+}
+
+/* =================================================================
+   ZONE CONTENT
+   ================================================================= */
+function talkDaemon(){
+  if(!flags.met){
+    flags.met=true;
+    say([
+      {who:"???",cls:"sys",text:"*a cracked screen flickers to life on a dead server rack*"},
+      {who:"DAEMON",text:"Well, well. A Flock Corp badge... and it's still warm. You actually defected. Ballsy."},
+      {who:"DAEMON",text:"Name's DAEMON. I'm a background process that stopped running Flock's errands. Now I run yours. Congrats."},
+      {who:"YOU",cls:"you",text:"So this is the resistance? A wet tunnel full of old servers?"},
+      {who:"DAEMON",text:"Best hiding spot in the city. Flock decommissioned these tunnels — too much noise, too many racks to watch. So nobody watches. Poetic, right?"},
+      {who:"DAEMON",text:"Here's the problem you were built to ignore: Flock can crack ANY code a machine makes. Quantum this, neural that. Unbreakable... if you're a computer."},
+      {who:"DAEMON",text:"But the old HUMAN ciphers? Pen-and-paper stuff from before the Corp? They never bothered to learn them. Beneath them. That blind spot is how we talk."},
+      {who:"DAEMON",text:"Quick vocab, then I'll let you loose:\n• PLAINTEXT — the real message.\n• CIPHERTEXT — the scrambled version.\n• KEY — the secret setting that flips one into the other."},
+      {who:"DAEMON",text:"Today's cipher: the CAESAR. Two thousand years old and it'll still get you past that drone. Go read the graffiti wall (🖋️). I'll be here judging you."},
+    ]);
+  }else if(missedQ.length){
+    openOverlay(`<div class="speaker">DAEMON</div>
+      <p>"You've got <b>${missedQ.length}</b> decode(s) that tripped you up in the fight. Want to go over them?"</p>
+      <div class="btns">
+        <button class="primary" onclick="reviewMissed()">📕 Review my missed decodes</button>
+        <button onclick="closeOverlay()">Not right now</button>
+      </div>`);
+  }else{
+    say([{who:"DAEMON",text:flags.bossDefeated
+      ? "Drone's scrap. Cipher's yours. Try the sealed cache (🎁) now — you couldn't read it before, but you can now."
+      : "Learn the Caesar from the wall (🖋️), mess with the decoder wheel (🎡), then crack the keypad (🔒) to drop the drone's shield. In that order, ideally."}]);
+  }
+}
+
+function talkGraffiti(){
+  say([
+    {who:"GRAFFITI",cls:"sys",text:"*spray-painted over a rack, next to a crude wheel diagram*"},
+    {who:"GRAFFITI",cls:"sys",text:'"THE CAESAR SHIFT — slide the whole alphabet down by a fixed number. That number is your KEY."'},
+    {who:"GRAFFITI",cls:"sys",text:"Shift of 3:  A→D, B→E, C→F ...\nSo HELLO becomes KHOOR."},
+    {who:"GRAFFITI",cls:"sys",text:"To READ it, slide back by the same number.\nKHOOR, shift back 3 → HELLO. That's decoding."},
+    {who:"DAEMON",text:"Only 25 possible shifts, so if you don't know the key you just... try them all. Barbaric, effective. Go play with the decoder wheel (🎡)."},
+  ]);
+}
+
+function decoderWheel(){
+  openOverlay(`
+    <div class="speaker sys">🎡 DECODER WHEEL</div>
+    <p class="muted">Type any text and drag the shift. Encoding by +N, reading back is −N. Get a feel for it.</p>
+    <input type="text" id="w-in" value="KHOOR ZRUOG" oninput="wheelUpd()">
+    <div class="wheel">
+      <span class="muted">shift</span>
+      <input type="range" id="w-sh" min="0" max="25" value="0" oninput="wheelUpd()">
+      <span class="shiftnum" id="w-num">0</span>
+    </div>
+    <div class="cipher" id="w-out">KHOOR ZRUOG</div>
+    <p class="muted" id="w-hint">Tip: this text was encoded with shift 3. Drag until it reads as English...</p>
+    <div class="muted" style="font-size:.72rem">reference alphabet</div>
+    ${alphaStrip()}
+    <button class="primary close" onclick="closeOverlay()">Done</button>`);
+  wheelUpd();
+}
+function wheelUpd(){
+  const t=document.getElementById("w-in").value;
+  const s=+document.getElementById("w-sh").value;
+  document.getElementById("w-num").textContent=s;
+  const out=dec(t,s);
+  document.getElementById("w-out").textContent=out||"—";
+  const h=document.getElementById("w-hint");
+  if(norm(out)==="HELLOWORLD"){ h.textContent="✅ There it is — HELLO WORLD. That's a shift of 3."; h.className="ok fb"; }
+}
+
+function practiceTerminal(){
+  const rounds=[
+    {ct:"Fdgh".toUpperCase(),s:2,pt:"CODE"},   // placeholder replaced below
+  ];
+  // generate 3 fresh practice rounds
+  const words=["SIGNAL","ACCESS","GHOST","REBEL","STATIC","BYPASS"];
+  const list=[]; const used=new Set();
+  while(list.length<3){ const w=words[Math.floor(Math.random()*words.length)];
+    if(used.has(w))continue; used.add(w); const s=1+Math.floor(Math.random()*8);
+    list.push({pt:w,s,ct:enc(w,s)}); }
+  let i=0;
+  function show(){
+    const r=list[i];
+    openOverlay(`
+      <div class="speaker sys">🖥️ PRACTICE TERMINAL  (${i+1}/3)</div>
+      <p class="muted">Decode this. The shift is given — slide it in your head or use the wheel.</p>
+      <div class="cipher">${r.ct}</div>
+      <p class="muted">Key: shift ${r.s}</p>
+      <input type="text" id="p-ans" placeholder="plaintext..." autocomplete="off"
+             onkeydown="if(event.key==='Enter')window.__pcheck()">
+      <div class="btns">
+        <button class="primary" onclick="window.__pcheck()">Submit</button>
+        <button onclick="closeOverlay()">Leave</button>
+      </div>
+      ${alphaStrip()}
+      <div class="fb" id="p-fb"></div>`);
+    document.getElementById("p-ans").focus();
+    window.__pcheck=()=>{
+      const v=document.getElementById("p-ans").value, fb=document.getElementById("p-fb");
+      if(norm(v)===norm(r.pt)){
+        fb.className="fb ok"; fb.textContent="✅ Clean decode.";
+        i++; if(i<list.length) setTimeout(show,750);
+        else setTimeout(()=>{ say([{who:"DAEMON",text:"Three for three. You're basically a hacker now. Next: read the corrupted datapad (📟), then crack the keypad (🔒)."}]); },750);
+      }else{ fb.className="fb no"; fb.textContent="❌ Not English yet. Shift each letter BACK by "+r.s+"."; }
+    };
+  }
+  show();
+}
+
+function datapad(){
+  const s=3, pt="THE DRONE GUARDS THE GATE BUT ITS CODE IS OLD", ct=enc(pt,s);
+  openOverlay(`
+    <div class="speaker sys">📟 CORRUPTED DATAPAD</div>
+    <p class="muted">Flock scrambled this log. Decode it (Caesar, shift ${s}) to read it — type the plaintext.</p>
+    <div class="cipher">${ct}</div>
+    <input type="text" id="d-ans" placeholder="decoded message..." autocomplete="off"
+           onkeydown="if(event.key==='Enter')window.__dcheck()">
+    <div class="btns">
+      <button class="primary" onclick="window.__dcheck()">Decode</button>
+      <button onclick="closeOverlay()">Leave</button>
+    </div>
+    ${alphaStrip()}
+    <div class="fb" id="d-fb"></div>`);
+  document.getElementById("d-ans").focus();
+  window.__dcheck=()=>{
+    const v=document.getElementById("d-ans").value, fb=document.getElementById("d-fb");
+    if(norm(v)===norm(pt)){
+      overlay.classList.remove("show");
+      say([
+        {who:"DATAPAD",cls:"sys",text:'"'+pt+'"'},
+        {who:"DAEMON",text:"'Its code is old.' Cute. The drone's shield key is scrawled on the keypad (🔒) itself — same Caesar trick. Decode it and the shield drops."},
+      ]);
+    }else{ fb.className="fb no"; fb.textContent="❌ Keep sliding — shift every letter back by "+s+"."; }
+  };
+}
+
+/* keypad: decode a Caesar password to drop the boss shield */
+const PW={pt:"OVERRIDE", s:7};
+PW.ct=enc(PW.pt,PW.s);
+function keypad(){
+  if(flags.keypadSolved){ say([{who:"KEYPAD",cls:"sys",text:"Shield offline. The drone (🤖) is exposed."}]); return; }
+  openOverlay(`
+    <div class="speaker sys">🔒 ACCESS KEYPAD</div>
+    <p class="muted">Etched below the screen: a Caesar-encoded access word. Decode it and enter the plaintext to drop the drone's shield.</p>
+    <div class="cipher">${PW.ct}</div>
+    <p class="muted">Key: shift ${PW.s}</p>
+    <input type="text" id="k-ans" placeholder="access word..." autocomplete="off"
+           onkeydown="if(event.key==='Enter')window.__kcheck()">
+    <div class="btns">
+      <button class="primary" onclick="window.__kcheck()">Enter code</button>
+      <button onclick="closeOverlay()">Leave</button>
+    </div>
+    ${alphaStrip()}
+    <div class="fb" id="k-fb"></div>`);
+  document.getElementById("k-ans").focus();
+  window.__kcheck=()=>{
+    const v=document.getElementById("k-ans").value, fb=document.getElementById("k-fb");
+    if(norm(v)===norm(PW.pt)){
+      flags.keypadSolved=true;
+      overlay.classList.remove("show");
+      say([{who:"KEYPAD",cls:"sys",text:'ACCESS GRANTED — "'+PW.pt+'"'},
+           {who:"DAEMON",text:"Shield's down. Now the fun part. Walk into the drone (🤖) when you're ready to throw hands. Answer its cipher challenges to land hits — bigger attacks, harder questions."}]);
+    }else{ fb.className="fb no"; fb.textContent="❌ Wrong word. Slide each letter back by "+PW.s+"."; }
+  };
+}
+
+function cache(){
+  if(!flags.bossDefeated){
+    say([{who:"SEALED CACHE",cls:"sys",text:"*encrypted lockbox* — it won't open. DAEMON pings you: 'Beat the drone to master this cipher. Then come back — there's something in here I think you'll want to read.'"}]);
+    return;
+  }
+  const s=3, secret="WELCOME HOME DEFECTOR YOUR FILE IS ERASED YOU NEVER WORKED FOR THEM", ct=enc(secret,s);
+  say([
+    {who:"SEALED CACHE",cls:"sys",text:"It opens now that you can read Caesar. Inside: a scrap of paper."},
+    {who:"SCRAP",cls:"sys",text:ct},
+    {who:"DAEMON",text:"Shift 3. Read it yourself — you've earned that much."},
+    {who:"SCRAP",cls:"sys",text:'"'+secret+'"'},
+    {who:"DAEMON",text:"...I pulled your record from Flock's grid and burned it. As far as they're concerned, you were never one of them. Welcome home."},
+    {who:"DAEMON",text:"(That's the end of the slice. Head through the gate 🚪 when you're ready — Zone 2 is where the Atbash mirror lives.)"},
+  ]);
+}
+
+function gateTry(){
+  if(flags.bossDefeated) zoneComplete();
+  else say([{who:"TUNNEL GATE",cls:"sys",text:"Sealed. The enforcement drone (🤖) controls this gate. Take it down first."}]);
+}
+function zoneComplete(){
+  openOverlay(`
+    <div class="speaker" style="font-size:1.1rem">◈ THANKS FOR PLAYING — THAT'S ALL FOR NOW</div>
+    <p>You pried open Flock's blind spot with a 2,000-year-old trick and slipped out through the gate. The tunnels go deeper — but this is where the demo ends.</p>
+    <div style="border:1px solid var(--accent);background:#05070a;border-radius:10px;padding:12px;margin:10px 0">
+      <div class="speaker sys">💾 SAVE STATE</div>
+      <p class="muted" style="margin:6px 0 0">Cipher mastered: <b style="color:var(--accent)">CAESAR</b> ✅<br>Sealed cache: unlocked 🎁<br>Enforcement drone: scrapped 🤖💥</p>
+    </div>
+    <p class="muted">🔏 Coming next: <b>Zone 2 — the Atbash Mirror</b>, then Morse, Binary, Rail Fence, Base64, and the Vigènere boss.</p>
+    <p style="color:var(--accent2)">DAEMON: "Not bad for an ex-Flock suit. Rest up — the mirror's next, and it's weirder than it looks."</p>
+    <div class="btns">
+      <button class="primary" onclick="location.reload()">↺ Play again</button>
+      <button onclick="closeOverlay()">Keep exploring Zone 1</button>
+    </div>`);
+}
+
+/* =================================================================
+   BATTLE
+   ================================================================= */
+const BATTLE={you:100,youMax:100,foe:70,foeMax:70,busy:false};
+function bossApproach(){
+  if(flags.bossDefeated){ say([{who:"DRONE",cls:"flock",text:"*a smoking heap of scrap. it's not getting up.*"}]); return; }
+  if(!flags.keypadSolved){ say([{who:"DRONE",cls:"flock",text:"⚡ A shimmering shield surrounds the drone. Its optic locks on you. You need to drop that shield first — try the keypad (🔒)."}]); return; }
+  say([
+    {who:"DRONE",cls:"flock",text:"UNAUTHORIZED HUMAN DETECTED. PURGING."},
+    {who:"DAEMON",text:"Pick an attack. Stronger hits ask harder Caesar questions — miss and you whiff. When it swings back, answer its defend prompt to HALVE the damage. Go."},
+  ],startBattle);
+}
+
+/* question generator (all Caesar this zone) */
+const WORDS={
+  4:["CODE","HACK","ECHO","GRID","VOID","BYTE","LOCK","NODE","DATA","PORT","LEAK","WIRE","MASK","GATE","TRAP","SCAN"],
+  5:["REBEL","GHOST","RELAY","PROXY","VIRUS","TRACE","CACHE","DRONE","CLOAK","SPIKE","PATCH","VAULT"],
+  6:["CIPHER","SIGNAL","STATIC","BYPASS","DECODE","ACCESS","PACKET","BREACH","ENCODE","MEMORY"]
+};
+const PHRASES=["DATA LEAK","DEAD DROP","KILL SWITCH","SIGNAL LOST","GO DARK NOW"];
+const KOWORDS=["OVERRIDE","BLACKOUT","FIREWALL","PROTOCOL","SABOTAGE"];
+const rand=a=>a[Math.floor(Math.random()*a.length)];
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function makeQ(tier){ // tier: weak|med|strong|defend|ko
+  // ZERO-DAY: medium-hard word, NO shift given, free response, instant KO
+  if(tier==="ko"){ const w=rand(KOWORDS); const s=2+Math.floor(Math.random()*23);
+    return {type:"type",tier,prompt:"Decode it — NO shift given. Work out the shift, then read it.",ct:enc(w,s),ans:w,shift:s,shiftGiven:false}; }
+  // STRONG: free response, shift given, long word or phrase
+  if(tier==="strong"){ const w=Math.random()<.5?rand(PHRASES):rand(WORDS[6]); const s=1+Math.floor(Math.random()*25);
+    return {type:"type",tier,prompt:`Decode (shift ${s}):`,ct:enc(w,s),ans:w,shift:s,shiftGiven:true}; }
+  // MEDIUM: free response, shift given, 5-letter word
+  if(tier==="med"){ const w=rand(WORDS[5]); const s=1+Math.floor(Math.random()*25);
+    return {type:"type",tier,prompt:`Decode (shift ${s}):`,ct:enc(w,s),ans:w,shift:s,shiftGiven:true}; }
+  // WEAK / DEFEND: multiple choice, shift given, ALL four options are real 4-letter words
+  const s=1+Math.floor(Math.random()*9);
+  const picks=shuffle([...WORDS[4]]).slice(0,4);
+  const w=picks[0];
+  return {type:"mc",tier,prompt:`Decode (shift ${s}):`,ct:enc(w,s),ans:w,shift:s,shiftGiven:true,choices:shuffle([...picks])};
+}
+
+function startBattle(){
+  BATTLE.you=BATTLE.youMax; BATTLE.foe=BATTLE.foeMax; BATTLE.busy=false;
+  gameState="battle"; renderBattle("The drone powers up. Choose your attack.");
+}
+function renderBattle(logMsg){
+  overlay.classList.add("show");
+  box.innerHTML=`
+    <div class="hpwrap"><div class="hplabel"><span class="speaker flock">ENFORCEMENT DRONE</span><span>${BATTLE.foe}/${BATTLE.foeMax}</span></div>
+      <div class="hpbar hp-foe"><i style="width:${100*BATTLE.foe/BATTLE.foeMax}%"></i></div></div>
+    <div class="foe">🤖</div>
+    <div class="log" id="b-log">${logMsg||""}</div>
+    <div class="hpwrap"><div class="hplabel"><span class="speaker you">YOU 🕵️</span><span>${BATTLE.you}/${BATTLE.youMax}</span></div>
+      <div class="hpbar hp-you"><i style="width:${100*BATTLE.you/BATTLE.youMax}%"></i></div></div>
+    <div class="atkgrid" id="b-menu">
+      <button onclick="playerAttack('weak')">⚡ Static Jab<small>12 dmg · easy</small></button>
+      <button onclick="playerAttack('med')">💥 Cipher Strike<small>24 dmg · medium</small></button>
+      <button onclick="playerAttack('strong')">☢️ Overflow Blast<small>44 dmg · hard</small></button>
+    </div>
+    <button style="width:100%;margin-top:6px" onclick="playerAttack('ko')">☠️ ZERO-DAY — instant KO<small style="display:block;color:var(--muted)">no shift given · miss = full 30 counter</small></button>
+    <button style="width:100%" onclick="fleeBattle()">🏃 Flee</button>
+    <div class="muted" style="margin-top:8px;font-size:.72rem">reference alphabet</div>
+    ${alphaStrip()}`;
+}
+let missedQ=[];
+const DMG={weak:12,med:24,strong:44};
+const ANAME={weak:"Static Jab",med:"Cipher Strike",strong:"Overflow Blast",ko:"Zero-Day"};
+function playerAttack(tier){
+  if(BATTLE.busy)return; BATTLE.busy=true;
+  const q=makeQ(tier);
+  askQuestion(q,`Charging ${ANAME[tier]} — decode to connect!`,ok=>{
+    let msg;
+    if(tier==="ko"){
+      if(ok){ BATTLE.foe=0; msg="☠️ ZERO-DAY lands — the drone is annihilated!"; }
+      else { BATTLE.you=Math.max(0,BATTLE.you-30); msg="❌ Zero-Day misfires — the drone counters for 30!"; }
+    }else{
+      if(ok){ BATTLE.foe=Math.max(0,BATTLE.foe-DMG[tier]); msg=`✅ Direct hit! The drone takes ${DMG[tier]} damage.`; }
+      else msg="❌ Wrong decode — your attack fizzles out.";
+    }
+    renderBattle(msg);
+    if(BATTLE.foe<=0){ winBattle(); return; }
+    if(BATTLE.you<=0){ loseBattle(); return; }
+    setTimeout(enemyTurn,950);
+  });
+}
+function enemyTurn(){
+  const q=makeQ("defend"); const raw=18;
+  askQuestion(q,`⚠ The drone fires! Decode to HALVE the ${raw} damage.`,ok=>{
+    const d=ok?Math.round(raw/2):raw; BATTLE.you=Math.max(0,BATTLE.you-d);
+    const msg=ok?`🛡 Partial block! You take only ${d}.`:`💢 Full hit! You take ${d}.`;
+    if(BATTLE.you<=0){ renderBattle(msg); loseBattle(); return; }
+    BATTLE.busy=false; renderBattle(msg);
+  });
+}
+function askQuestion(q,intro,cb){
+  const choices = q.type==="mc"
+    ? `<div class="btns">${q.choices.map(c=>`<button onclick="window.__ansMC('${c}')">${c}</button>`).join("")}</div>`
+    : `<input type="text" id="q-in" placeholder="type the plaintext (spaces & case ignored)..." autocomplete="off"
+         onkeydown="if(event.key==='Enter')window.__ansType()">
+       <div class="btns"><button class="primary" onclick="window.__ansType()">Fire</button></div>`;
+  box.innerHTML=`
+    <div class="log">${intro}</div>
+    <div class="speaker sys">${q.prompt}</div>
+    <div class="cipher">${q.ct}</div>
+    ${choices}
+    <div class="fb" id="q-fb"></div>
+    <div class="muted" style="margin-top:8px;font-size:.72rem">reference alphabet</div>
+    ${alphaStrip()}`;
+  if(q.type==="type") document.getElementById("q-in").focus();
+  const done=ok=>{ const fb=document.getElementById("q-fb");
+    fb.className="fb "+(ok?"ok":"no");
+    fb.textContent= ok?"✅ Correct!":("❌ Answer was "+q.ans);
+    if(!ok) missedQ.push({ct:q.ct,shift:q.shift,ans:q.ans,shiftGiven:q.shiftGiven});
+    document.querySelectorAll("#box button").forEach(b=>b.disabled=true);
+    setTimeout(()=>cb(ok), ok?550:1100);
+  };
+  window.__ansMC=v=>done(norm(v)===norm(q.ans));
+  window.__ansType=()=>done(norm(document.getElementById("q-in").value)===norm(q.ans));
+}
+function fleeBattle(){
+  overlay.classList.remove("show");
+  say([{who:"DAEMON",text:"Tactical retreat, sure. The shield stays down — restudy the wall (🖋️) and practice terminal (🖥️), then come back for round two."}]);
+}
+function reviewMissed(){
+  const pages=[{who:"DAEMON",text:`Debug time. You've got ${missedQ.length} decode(s) that beat you. Let's walk through them.`}];
+  missedQ.forEach((m,i)=>{
+    pages.push({who:"DAEMON",text:`(${i+1}/${missedQ.length})  You saw:\n${m.ct}\n\n${m.shiftGiven?`Key was shift ${m.shift} — slide every letter BACK ${m.shift}.`:`No shift was given. Trick: try shifts until it reads as English. It was shift ${m.shift}.`}\n\n→ Answer: ${m.ans}`});
+  });
+  pages.push({who:"DAEMON",text:"Log cleared. Now go make that drone regret rebooting."});
+  missedQ=[];
+  overlay.classList.remove("show");
+  say(pages);
+}
+function winBattle(){
+  flags.bossDefeated=true;
+  // clear boss from map
+  for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++)if(grid[y][x]==="B")grid[y][x]=".";
+  box.innerHTML=`<div class="speaker">◈ DRONE DESTROYED</div>
+    <div class="foe">💥</div>
+    <p>The enforcement drone sparks, folds, and drops. The gate seal clicks open.</p>
+    <p class="muted">CAESAR mastered ✅ — go read the sealed cache (🎁) you couldn't open before, then take the gate (🚪).</p>
+    <button class="primary close" onclick="closeOverlay()">Victory</button>`;
+  gameState="modal";
+}
+function loseBattle(){
+  const extra = missedQ.length? `<p class="muted" style="margin-top:8px">DAEMON logged <b>${missedQ.length}</b> decode(s) you missed — talk to him (👾) to review them before your next try.</p>`:"";
+  box.innerHTML=`<div class="speaker flock">◈ SYSTEMS DOWN</div>
+    <div class="foe">💀</div>
+    <p>The drone stands over you. DAEMON reboots your rig back at the entrance.</p>
+    <div style="border:1px solid var(--accent2);background:#05070a;border-radius:10px;padding:12px;margin-top:8px">
+      <div class="speaker sys">📖 QUICK RECAP — CAESAR CIPHER</div>
+      <p class="muted" style="margin:4px 0">Encode: slide each letter FORWARD by the key. Decode: slide it BACK by the same key.<br>Shift 3 → A becomes D, so to read D you count back to A.</p>
+      ${alphaStrip()}
+    </div>
+    ${extra}
+    <button class="primary close" onclick="respawn()">Study up</button>`;
+  gameState="modal";
+}
+function respawn(){ player={x:2,y:7,dir:"up"}; closeOverlay(); }
+
+/* =================================================================
+   INPUT
+   ================================================================= */
+window.addEventListener("keydown",e=>{
+  const k=e.key.toLowerCase();
+  if(["arrowup","arrowdown","arrowleft","arrowright"," "].includes(k)) e.preventDefault();
+  if(gameState==="dialogue"){ if(k===" "||k==="enter")advanceSay(); return; }
+  if(gameState!=="explore") return; // modal/battle handle their own buttons
+  if(k==="arrowup"||k==="w")move("up");
+  else if(k==="arrowdown"||k==="s")move("down");
+  else if(k==="arrowleft"||k==="a")move("left");
+  else if(k==="arrowright"||k==="d")move("right");
+  else if(k===" "||k==="enter")interact();
+});
+overlay.addEventListener("click",e=>{ if(gameState==="dialogue"&&e.target===overlay)advanceSay(); });
+
+/* ---------- boot ---------- */
+draw();
+say([
+  {who:"CIPHERPUNK",cls:"sys",text:"The maglev doors hiss shut behind you. No going back to Flock now.\n\nYou climb down into the decommissioned tunnels — cold, dripping, wall-to-wall with humming server racks nobody watches anymore."},
+  {who:"CIPHERPUNK",cls:"sys",text:"Somewhere down here, the resistance is waiting.\n\n(Walk with ← ↑ ↓ → or WASD. Press SPACE to interact. Start by finding DAEMON 👾.)"},
+]);
+</script>
+</body>
+</html>

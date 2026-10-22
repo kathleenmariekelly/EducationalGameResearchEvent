@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CodeQuest: Steve's Journey Home</title>
+  <meta name="description" content="An educational game about learning C++ by coding a character home." />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+
+    <!-- ============ HOME SCREEN ============ -->
+    <section id="home-screen">
+      <div class="home-hero">
+        <h1>⛏️ CodeQuest</h1>
+        <p class="tagline">Learn C++ by coding your character home.</p>
+      </div>
+
+      <div class="home-grid">
+        <!-- Player status card -->
+        <div class="card status-card">
+          <h2>Your Coder</h2>
+          <canvas id="avatar" width="120" height="120"></canvas>
+          <div class="level-line">
+            <span id="home-level" class="big-level">Level 1</span>
+            <span id="home-title" class="rank-title">Beginner</span>
+          </div>
+          <div class="xpbar-wrap">
+            <div id="home-xpbar" class="xpbar"></div>
+          </div>
+          <div id="home-xptext" class="xptext">0 / 100 XP</div>
+        </div>
+
+        <!-- Character customization -->
+        <div class="card">
+          <h2>Customize</h2>
+          <p class="card-sub">Pick your character skin:</p>
+          <div id="skin-picker" class="skin-picker"></div>
+        </div>
+      </div>
+
+      <!-- Level select -->
+      <div class="card levels-card">
+        <h2>Levels</h2>
+        <p class="card-sub">Complete levels to earn XP. ⭐ = your best stars.</p>
+        <div id="level-select" class="level-select"></div>
+      </div>
+
+      <div style="text-align:center; margin-bottom: 8px;">
+        <button id="open-editor-btn" class="build-btn">🛠️ Build Your Own Level</button>
+      </div>
+
+      <button id="reset-progress" class="link-btn">Reset all progress</button>
+    </section>
+
+    <!-- ============ GAME SCREEN ============ -->
+    <section id="game-screen" class="hidden">
+      <header id="topbar">
+        <div class="brand">
+          <span id="home-btn" class="home-link">← Menu</span>
+          ⛏️ CodeQuest
+        </div>
+        <div class="stats">
+          <span id="level-badge">Level 1</span>
+          <span id="acct-badge">Lv.1</span>
+          <span id="score-badge">+0 XP</span>
+          <span id="mute-btn" class="mute-btn" title="Toggle sound">🔊</span>
+        </div>
+      </header>
+
+      <main id="game">
+        <section id="left">
+          <div id="level-title"></div>
+          <div id="level-goal"></div>
+          <canvas id="grid" width="440" height="440"></canvas>
+          <div id="status"></div>
+          <div id="fail-choices" class="hidden">
+            <button id="retry-btn" class="choice-btn">🔄 Retry this one</button>
+            <button id="reshuffle-btn" class="choice-btn">🎲 Try a different one</button>
+          </div>
+        </section>
+
+        <section id="right">
+          <div id="concept-panel">
+            <div id="concept-title">
+              <span id="concept-title-text"></span>
+              <span id="concept-collapse" class="concept-collapse">−</span>
+            </div>
+            <div id="concept-body"></div>
+          </div>
+          <div class="editor-label">
+            <span>Your C++ code</span>
+            <span id="hint-toggle" class="hint-toggle">💡 Hint</span>
+          </div>
+          <div id="hint-box" class="hidden"></div>
+          <textarea id="code" spellcheck="false"></textarea>
+          <div class="commands-ref" id="commands-ref"></div>
+          <div class="buttons">
+            <button id="run-btn">▶ Run</button>
+            <button id="reset-btn">↺ Reset</button>
+            <button id="next-btn" class="hidden">Next Level →</button>
+          </div>
+        </section>
+      </main>
+    </section>
+
+    <!-- ============ COMPLETION SCREEN ============ -->
+    <section id="win-screen" class="hidden">
+      <div class="win-hero">
+        <div class="win-trophy">🏆</div>
+        <h1>Congratulations!</h1>
+        <p class="win-msg">You finished all 9 levels of CodeQuest and learned
+        the building blocks of C++: statements, loops, conditions, jumps,
+        and functions. You're a real coder now! 🎉</p>
+        <div id="win-stats" class="win-stats"></div>
+        <div class="win-buttons">
+          <button id="win-editor-btn">🛠️ Build Your Own Level</button>
+          <button id="win-menu-btn">🏠 Back to Menu</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ LEVEL EDITOR ============ -->
+    <section id="editor-screen" class="hidden">
+      <header id="editor-topbar">
+        <div class="brand">
+          <span id="editor-home-btn" class="home-link">← Menu</span>
+          🛠️ Level Builder
+        </div>
+      </header>
+
+      <div class="editor-body">
+        <div class="editor-left">
+          <div class="editor-toolbar">
+            <span class="tool-label">Tool:</span>
+            <button class="tool-btn selected" data-tool="wall">🧱 Wall</button>
+            <button class="tool-btn" data-tool="water">🌊 Water</button>
+            <button class="tool-btn" data-tool="cave">🕳️ Cave</button>
+            <button class="tool-btn" data-tool="gem">💎 Diamond</button>
+            <button class="tool-btn" data-tool="start">🧍 Start</button>
+            <button class="tool-btn" data-tool="house">🏠 House</button>
+            <button class="tool-btn" data-tool="erase">🧽 Erase</button>
+          </div>
+          <canvas id="editor-grid" width="440" height="440"></canvas>
+          <div class="editor-size">
+            Grid size:
+            <label>W <input id="grid-w" type="number" min="3" max="10" value="6"></label>
+            <label>H <input id="grid-h" type="number" min="3" max="10" value="6"></label>
+            <button id="resize-grid">Apply</button>
+          </div>
+          <div id="editor-status"></div>
+        </div>
+
+        <div class="editor-right">
+          <div class="editor-help">
+            <h3>How to build</h3>
+            <ol>
+              <li>Pick a <b>Tool</b> above.</li>
+              <li><b>Click tiles</b> to place walls, water, caves, or diamonds.</li>
+              <li>Set a <b>Start</b> (🧍) and a <b>House</b> (🏠) — you need one of each.</li>
+              <li>Choose the direction Steve faces to start.</li>
+              <li>Press <b>Play</b> and write code to solve YOUR level!</li>
+            </ol>
+            <div class="facing-row">
+              Steve faces:
+              <select id="start-facing">
+                <option value="right">→ Right</option>
+                <option value="down">↓ Down</option>
+                <option value="left">← Left</option>
+                <option value="up">↑ Up</option>
+              </select>
+            </div>
+          </div>
+          <div class="editor-actions">
+            <button id="play-custom-btn">▶ Play My Level</button>
+            <button id="clear-grid-btn">🗑️ Clear</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ INTRO TUTORIAL ============ -->
+    <div id="intro-overlay" class="hidden">
+      <div class="intro-card">
+        <div class="intro-emoji">⛏️</div>
+        <h2>Welcome to CodeQuest!</h2>
+        <p>Learn to code in <b>C++</b> by guiding your character home.</p>
+        <ul>
+          <li>📝 Write real C++ commands in the editor, like <code>moveForward();</code></li>
+          <li>▶ Press <b>Run</b> to watch your code move the character step by step.</li>
+          <li>💎 Collect all diamonds, then reach the 🏠 house to win.</li>
+          <li>⭐ Earn XP and level up as puzzles get harder — from simple steps to loops, conditions, and functions!</li>
+        </ul>
+        <button id="intro-start-btn">Let's Code! 🚀</button>
+      </div>
+    </div>
+
+    <!-- ============ LEVEL-UP TOAST ============ -->
+    <div id="levelup-toast" class="hidden">
+      <div class="levelup-inner">
+        <div class="levelup-star">⭐</div>
+        <div class="levelup-text">LEVEL UP!</div>
+        <div id="levelup-detail"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

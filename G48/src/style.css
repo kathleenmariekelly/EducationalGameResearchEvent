@@ -1,0 +1,34 @@
+:root {
+  --bg: #1a1230;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  background: radial-gradient(circle at 50% 0%, #2a1e4d 0%, #140d26 70%);
+  font-family: 'Trebuchet MS', 'Segoe UI', system-ui, sans-serif;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#game-wrap {
+  position: relative;
+  width: 960px;
+  max-width: 100vw;
+  aspect-ratio: 960 / 600;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6), 0 0 0 3px #ffd15c inset;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: -webkit-optimize-contrast;
+  cursor: default;
+  touch-action: none;
+}

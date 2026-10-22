@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The Algorithmic Alchemist</title>
+  <meta name="description" content="Walk the vale, brew potions by designing sorting algorithms, and keep the cauldron from exploding by keeping your algorithm efficient." />
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+</head>
+<body class="map-body">
+  <div id="game-container"></div>
+
+  <!-- Potion info bar (updates as you walk over cauldrons) -->
+  <div id="info-bar" class="info-bar">
+    <div class="ib-main">
+      <div class="ib-top">
+        <span id="ib-title">Wander the vale</span>
+        <span id="ib-diff" class="ib-pill" style="display:none"></span>
+        <span id="ib-stars" class="ib-stars"></span>
+      </div>
+      <div id="ib-desc" class="ib-desc">Walk up to a cauldron to read its potion, then press E to brew.</div>
+    </div>
+    <div id="ib-key" class="ib-key"></div>
+  </div>
+
+  <!-- Brewing station modal (the block editor) -->
+  <div id="brew-modal" class="overlay brew-overlay">
+    <div class="brew-box">
+      <div id="b-fx" class="brew-fx"></div>
+      <div id="b-fx-label" class="brew-fx-label"></div>
+
+      <div class="brew-header">
+        <div>
+          <h2 id="b-potion-title"></h2>
+        </div>
+        <button id="b-close" class="ghost">✕ Leave cauldron</button>
+      </div>
+
+      <div class="brew-stage">
+        <!-- Wizard on the side -->
+        <aside class="brew-wizard">
+          <svg class="wiz-svg" viewBox="0 0 130 215" xmlns="http://www.w3.org/2000/svg">
+            <ellipse cx="65" cy="208" rx="34" ry="7" fill="#00000055"/>
+            <line x1="99" y1="66" x2="110" y2="200" stroke="#6b4a2a" stroke-width="6" stroke-linecap="round"/>
+            <circle cx="99" cy="60" r="13" fill="#38e0ff" opacity=".4"/>
+            <circle cx="99" cy="60" r="7" fill="#9bf0ff"/>
+            <path d="M38 202 Q34 128 65 116 Q96 128 92 202 Z" fill="#5b2a86"/>
+            <path d="M40 202 Q48 176 65 176 Q82 176 90 202 Z" fill="#7a3db0"/>
+            <ellipse cx="42" cy="152" rx="8" ry="16" fill="#5b2a86" transform="rotate(12 42 152)"/>
+            <ellipse cx="88" cy="152" rx="8" ry="16" fill="#5b2a86" transform="rotate(-12 88 152)"/>
+            <ellipse cx="65" cy="116" rx="22" ry="9" fill="#7a3db0"/>
+            <circle cx="65" cy="98" r="17" fill="#f1c9a0"/>
+            <circle cx="59" cy="97" r="2.4" fill="#201018"/>
+            <circle cx="71" cy="97" r="2.4" fill="#201018"/>
+            <ellipse cx="65" cy="82" rx="30" ry="9" fill="#3a1a5e"/>
+            <path d="M45 82 Q65 76 85 82 L67 22 Q64 16 60 24 Z" fill="#4a2178"/>
+            <polygon points="62,44 64,50 70,50 65,54 67,60 62,56 57,60 59,54 54,50 60,50" fill="#ffd561" opacity=".9"/>
+            <circle cx="62" cy="22" r="4" fill="#ffd561"/>
+          </svg>
+          <div id="b-brewer" class="brewer-name"></div>
+          <p id="b-note" class="note"></p>
+          <p id="b-budget" class="budget"></p>
+        </aside>
+
+        <!-- Recipe (above) + cauldron (below) -->
+        <div class="brew-work">
+          <div class="recipe-row">
+            <section class="col palette-col">
+              <h3>Recipe blocks</h3>
+              <p class="hint">Click to add. Loops and "if" hold other blocks inside them.</p>
+              <div id="b-palette"></div>
+            </section>
+            <section class="col program-col">
+              <h3>Your recipe</h3>
+              <p class="hint">Click a container to add blocks <i>inside</i> it — nesting is the recipe.</p>
+              <div id="b-program" class="program"></div>
+              <div class="prog-actions">
+                <button id="b-clear" class="ghost">Clear</button>
+                <button id="b-ref" class="ghost">📖 Reference</button>
+                <button id="b-bigo" class="ghost">Big-O?</button>
+              </div>
+            </section>
+          </div>
+
+          <div class="cauldron-zone">
+            <div class="cauldron-art">
+              <div class="caul-legs"></div>
+              <div class="caul-handle caul-handle-l"></div>
+              <div class="caul-handle caul-handle-r"></div>
+              <div class="caul-body"></div>
+              <div class="caul-rim"></div>
+              <div class="caul-mouth"></div>
+              <div class="caul-surface"></div>
+              <div class="caul-brew"><div id="b-bars" class="bars"></div></div>
+            </div>
+            <div class="cauldron-panel">
+              <div class="stats">
+                <div class="stat"><span id="b-compares" class="num">–</span><span>stirs</span></div>
+                <div class="stat"><span id="b-swaps" class="num">–</span><span>pours</span></div>
+              </div>
+              <div id="b-verdict" class="verdict"></div>
+              <button id="b-run" class="primary big-brew">🔥 Brew!</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reference overlay -->
+  <div id="brew-ref" class="overlay">
+    <div class="overlay-box">
+      <h2>Recipe block reference</h2>
+      <ul class="ref-list">
+        <li><b>for each i : 0 → n-1</b> — outer loop over position <code>i</code>.</li>
+        <li><b>for each j : i+1 → n-1</b> — inner loop over positions after i. Must sit inside an i-loop.</li>
+        <li><b>for each j : 0 → n-2</b> — inner loop over adjacent pairs (j and j+1).</li>
+        <li><b>repeat passes until no swaps</b> — repeats its inside blocks until a full pass makes no swaps (an "early exit").</li>
+        <li><b>if a[ ] a[ ]</b> — pick each side (i, i+1, j, j+1) and the operator (&gt; / &lt;). Runs its inside blocks only if true. One check = one stir.</li>
+        <li><b>swap a[ ] , a[ ]</b> — exchange two values you pick. One pour.</li>
+      </ul>
+      <p class="ref-tip">Try:<br>
+      • <b>Selection-ish:</b> loop i → loop j (i+1→n-1) → if a[i] &gt; a[j] → swap a[i], a[j].<br>
+      • <b>Bubble + early exit:</b> repeat until no swaps → loop j (0→n-2) → if a[j] &gt; a[j+1] → swap a[j], a[j+1].</p>
+      <button id="b-ref-close" class="primary">Got it</button>
+    </div>
+  </div>
+
+  <!-- Big-O overlay -->
+  <div id="brew-bigo" class="overlay">
+    <div class="overlay-box">
+      <h2>Reading a recipe's Big-O</h2>
+      <div id="b-bigo-body"></div>
+      <button id="b-bigo-close" class="primary">Close</button>
+    </div>
+  </div>
+
+  <script type="module" src="src/overworld.js"></script>
+</body>
+</html>

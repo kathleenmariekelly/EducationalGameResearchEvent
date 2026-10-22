@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pathfinder Academy — Search Algorithms</title>
+<style>
+  :root{
+    --bg:#0f1420; --panel:#1a2233; --ink:#e6edf7; --muted:#8b9bb5;
+    --accent:#4da3ff; --good:#43d17a; --warn:#ffcf5c; --bad:#ff6b6b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink);}
+  header{padding:14px 20px;border-bottom:1px solid #26314a;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  header h1{font-size:18px;margin:0}
+  .wrap{display:flex;gap:18px;padding:18px;align-items:flex-start;flex-wrap:wrap}
+  .stage{background:var(--panel);border:1px solid #26314a;border-radius:12px;padding:14px}
+  canvas{background:#0b0f18;border-radius:8px;display:block;cursor:pointer}
+  .side{flex:1;min-width:300px;max-width:420px;display:flex;flex-direction:column;gap:14px}
+  .card{background:var(--panel);border:1px solid #26314a;border-radius:12px;padding:14px}
+  .card h2{margin:0 0 8px;font-size:15px}
+  .card p{margin:6px 0;color:var(--muted);font-size:13px;line-height:1.5}
+  .lesson{border-left:3px solid var(--accent);padding-left:10px}
+  button{background:#26314a;color:var(--ink);border:1px solid #35435f;border-radius:8px;padding:8px 12px;font-size:13px;cursor:pointer}
+  button:hover{background:#31405e}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#04121f;font-weight:600}
+  button.active{outline:2px solid var(--accent)}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  select,input[type=range]{background:#0b0f18;color:var(--ink);border:1px solid #35435f;border-radius:6px;padding:4px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:5px 6px;border-bottom:1px solid #26314a}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  .tag{display:inline-block;padding:1px 7px;border-radius:20px;font-size:11px;font-weight:600}
+  .tag.ok{background:rgba(67,209,122,.15);color:var(--good)}
+  .tag.no{background:rgba(255,107,107,.15);color:var(--bad)}
+  .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:10px}
+  .legend span{display:flex;align-items:center;gap:5px}
+  .sw{width:13px;height:13px;border-radius:3px;display:inline-block}
+  .levels{display:flex;gap:6px;flex-wrap:wrap}
+  .verdict{font-size:13px;margin-top:8px;padding:8px;border-radius:8px;background:#0b0f18}
+</style>
+</head>
+<body>
+<header>
+  <h1>🧭 Pathfinder Academy</h1>
+  <div class="levels" id="levelBar"></div>
+</header>
+
+<div class="wrap">
+  <div class="stage">
+    <canvas id="grid" width="640" height="640"></canvas>
+    <div class="legend">
+      <span><i class="sw" style="background:#0b0f18;border:1px solid #35435f"></i>grass (1)</span>
+      <span><i class="sw" style="background:#2e5d3a"></i>forest (5)</span>
+      <span><i class="sw" style="background:#3a3f52"></i>wall (∞)</span>
+      <span><i class="sw" style="background:#4da3ff"></i>frontier</span>
+      <span><i class="sw" style="background:#6b7ba0"></i>expanded</span>
+      <span><i class="sw" style="background:#ffcf5c"></i>path</span>
+      <span><i class="sw" style="background:#43d17a"></i>start</span>
+      <span><i class="sw" style="background:#ff6b6b"></i>goal</span>
+    </div>
+  </div>
+
+  <div class="side">
+    <div class="card">
+      <h2 id="lvlTitle">Level</h2>
+      <div class="lesson"><p id="lvlDesc"></p></div>
+      <div class="row" style="margin-top:10px">
+        <label style="font-size:13px">Algorithm
+          <select id="algo">
+            <option value="bfs">BFS</option>
+            <option value="dijkstra">Dijkstra</option>
+            <option value="greedy">Greedy Best-First</option>
+            <option value="astar">A*</option>
+          </select>
+        </label>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <button class="primary" id="run">▶ Run</button>
+        <button id="step">Step</button>
+        <button id="reset">Reset</button>
+        <label style="font-size:12px;color:var(--muted)">speed
+          <input type="range" id="speed" min="1" max="60" value="30">
+        </label>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Metrics — compare the runs</h2>
+      <table id="metrics">
+        <thead><tr><th>Algorithm</th><th class="num">Expanded</th><th class="num">Cost</th><th>Optimal?</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <div class="verdict" id="verdict">Run an algorithm, then run another and compare.</div>
+    </div>
+
+    <div class="card" id="sandboxCard" style="display:none">
+      <h2>Sandbox editing</h2>
+      <p>Click/drag to paint. Choose a brush:</p>
+      <div class="row">
+        <button data-brush="wall" class="brush active">Wall</button>
+        <button data-brush="forest" class="brush">Forest</button>
+        <button data-brush="grass" class="brush">Grass</button>
+        <button data-brush="start" class="brush">Start</button>
+        <button data-brush="goal" class="brush">Goal</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ---------- Terrain model ----------
+const COST = { grass:1, forest:5, wall:Infinity };
+const COLOR = { grass:'#0b0f18', forest:'#2e5d3a', wall:'#3a3f52' };
+
+// ---------- Grid ----------
+let COLS=20, ROWS=20, CELL=32;
+const canvas=document.getElementById('grid'), ctx=canvas.getContext('2d');
+let cells=[];            // cells[r][c] = 'grass'|'forest'|'wall'
+let start={r:0,c:0}, goal={r:0,c:0};
+
+function idx(r,c){return r*COLS+c;}
+function inBounds(r,c){return r>=0&&r<ROWS&&c>=0&&c<COLS;}
+function costAt(r,c){return COST[cells[r][c]];}
+
+function blankGrid(){
+  cells=[]; for(let r=0;r<ROWS;r++){cells.push(new Array(COLS).fill('grass'));}
+}
+
+// ---------- Algorithms produce a trace of expansions ----------
+// Each returns {order:[{r,c}...], cameFrom:Map, dist:Map, found:bool}
+function neighbors(r,c){
+  const out=[];
+  [[1,0],[-1,0],[0,1],[0,-1]].forEach(([dr,dc])=>{
+    const nr=r+dr,nc=c+dc;
+    if(inBounds(nr,nc)&&cells[nr][nc]!=='wall') out.push({r:nr,c:nc});
+  });
+  return out;
+}
+function heuristic(r,c){ return Math.abs(r-goal.r)+Math.abs(c-goal.c); } // Manhattan
+
+function search(kind){
+  const order=[], cameFrom=new Map(), g=new Map();
+  const sKey=idx(start.r,start.c);
+  g.set(sKey,0);
+  // priority: bfs=insertion order via queue; others via simple pq on priority()
+  const priority=(r,c)=>{
+    const gc=g.get(idx(r,c));
+    if(kind==='dijkstra') return gc;
+    if(kind==='greedy')   return heuristic(r,c);
+    if(kind==='astar')    return gc+heuristic(r,c);
+    return 0; // bfs
+  };
+  const frontier=[{r:start.r,c:start.c}];
+  const inFrontier=new Set([sKey]);
+  const visited=new Set();
+  let found=false;
+
+  while(frontier.length){
+    // pick next
+    let bi=0;
+    if(kind==='bfs'){ bi=0; }
+    else { for(let i=1;i<frontier.length;i++){ if(priority(frontier[i].r,frontier[i].c) < priority(frontier[bi].r,frontier[bi].c)) bi=i; } }
+    const cur=frontier.splice(bi,1)[0];
+    const cKey=idx(cur.r,cur.c);
+    inFrontier.delete(cKey);
+    if(visited.has(cKey)) continue;
+    visited.add(cKey);
+    order.push(cur);
+    if(cur.r===goal.r&&cur.c===goal.c){found=true;break;}
+
+    for(const nb of neighbors(cur.r,cur.c)){
+      const nKey=idx(nb.r,nb.c);
+      if(visited.has(nKey)) continue;
+      const stepCost = (kind==='bfs') ? 1 : costAt(nb.r,nb.c);
+      const tentative = g.get(cKey) + stepCost;
+      if(!g.has(nKey) || tentative < g.get(nKey)){
+        g.set(nKey,tentative);
+        cameFrom.set(nKey,cKey);
+        if(!inFrontier.has(nKey)){ frontier.push(nb); inFrontier.add(nKey); }
+      }
+    }
+  }
+  // reconstruct path
+  const path=[];
+  if(found){
+    let k=idx(goal.r,goal.c);
+    while(k!==undefined){ path.push({r:Math.floor(k/COLS),c:k%COLS}); k=cameFrom.get(k); }
+    path.reverse();
+  }
+  // true path cost (sum of terrain of entered cells)
+  let cost=0; for(let i=1;i<path.length;i++){cost+=costAt(path[i].r,path[i].c);}
+  return {order, cameFrom, g, path, found, cost, expanded:order.length};
+}
+
+// ---------- Rendering + animation ----------
+let anim={order:[],i:0,path:[],playing:false,result:null};
+
+function draw(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+    ctx.fillStyle=COLOR[cells[r][c]];
+    ctx.fillRect(c*CELL,r*CELL,CELL-1,CELL-1);
+  }
+  // expanded + frontier up to anim.i
+  for(let i=0;i<anim.i && i<anim.order.length;i++){
+    const {r,c}=anim.order[i];
+    ctx.fillStyle='#6b7ba0';
+    ctx.fillRect(c*CELL,r*CELL,CELL-1,CELL-1);
+  }
+  // path
+  for(const {r,c} of anim.path){
+    ctx.fillStyle='#ffcf5c';
+    ctx.fillRect(c*CELL,r*CELL,CELL-1,CELL-1);
+  }
+  // start/goal
+  ctx.fillStyle='#43d17a'; ctx.fillRect(start.c*CELL,start.r*CELL,CELL-1,CELL-1);
+  ctx.fillStyle='#ff6b6b'; ctx.fillRect(goal.c*CELL,goal.r*CELL,CELL-1,CELL-1);
+}
+
+function tick(){
+  if(!anim.playing) return;
+  const stepsPerFrame=Math.ceil(+document.getElementById('speed').value/10);
+  anim.i=Math.min(anim.i+stepsPerFrame, anim.order.length);
+  if(anim.i>=anim.order.length){
+    anim.playing=false;
+    anim.path=anim.result.path;
+    recordMetrics(anim.result);
+  }
+  draw();
+  if(anim.playing) requestAnimationFrame(tick);
+}
+
+function runAlgo(){
+  const kind=document.getElementById('algo').value;
+  const res=search(kind);
+  anim={order:res.order,i:0,path:[],playing:true,result:res,kind};
+  draw(); requestAnimationFrame(tick);
+}
+function stepAlgo(){
+  if(!anim.result){ const kind=document.getElementById('algo').value; const res=search(kind); anim={order:res.order,i:0,path:[],playing:false,result:res,kind}; }
+  anim.i=Math.min(anim.i+1,anim.order.length);
+  if(anim.i>=anim.order.length){ anim.path=anim.result.path; recordMetrics(anim.result); }
+  draw();
+}
+function resetAnim(){ anim={order:[],i:0,path:[],playing:false,result:null}; draw(); }
+
+// ---------- Metrics ----------
+let bestCost=Infinity, rows=new Map();
+function recordMetrics(res){
+  const kind=document.getElementById('algo').value;
+  const names={bfs:'BFS',dijkstra:'Dijkstra',greedy:'Greedy',astar:'A*'};
+  if(res.found) bestCost=Math.min(bestCost,res.cost);
+  rows.set(kind,{name:names[kind],expanded:res.expanded,cost:res.found?res.cost:null});
+  renderMetrics();
+}
+function renderMetrics(){
+  const tb=document.querySelector('#metrics tbody'); tb.innerHTML='';
+  for(const [,r] of rows){
+    const optimal = r.cost!==null && Math.abs(r.cost-bestCost)<1e-9;
+    tb.innerHTML+=`<tr><td>${r.name}</td><td class="num">${r.expanded}</td>
+      <td class="num">${r.cost===null?'—':r.cost}</td>
+      <td>${r.cost===null?'<span class="tag no">no path</span>':(optimal?'<span class="tag ok">optimal</span>':'<span class="tag no">worse</span>')}</td></tr>`;
+  }
+}
+
+// ---------- Levels ----------
+const LEVELS=[
+  {name:'1 · Frontier', algo:'bfs', sandbox:false,
+   desc:'Search = growing a frontier outward from the start. Run BFS and watch it flood in even rings — every cell costs the same, so it explores by distance in steps.',
+   build:()=>{ setSize(20); start={r:10,c:2}; goal={r:10,c:17}; }},
+  {name:'2 · Weights', algo:'dijkstra', sandbox:false,
+   desc:'A forest (cost 5) blocks the direct line. Run BFS: it takes the fewest TILES straight through the forest. Now run Dijkstra: it detours around — fewer tiles ≠ cheaper. Compare the Cost column.',
+   build:()=>{ setSize(20); start={r:10,c:2}; goal={r:10,c:17};
+     for(let r=4;r<16;r++)for(let c=8;c<12;c++)cells[r][c]='forest'; }},
+  {name:'3 · Heuristic', algo:'astar', sandbox:false,
+   desc:'Open field. Run Dijkstra: it expands a big circle in every direction. Run A*: same optimal path, but a narrow beam toward the goal. A heuristic focuses the search — compare Expanded.',
+   build:()=>{ setSize(24); start={r:12,c:2}; goal={r:12,c:21}; }},
+  {name:'4 · Greedy trap', algo:'greedy', sandbox:false,
+   desc:'A concave wall sits between start and goal. Run Greedy Best-First: it rushes at the goal and gets a longer path. Run A*: it accounts for cost-so-far and stays optimal. Compare Cost.',
+   build:()=>{ setSize(20); start={r:10,c:2}; goal={r:10,c:17};
+     for(let r=4;r<16;r++)cells[r][12]='wall';
+     for(let c=8;c<13;c++){cells[4][c]='wall';cells[15][c]='wall';} }},
+  {name:'5 · Sandbox', algo:'astar', sandbox:true,
+   desc:'Your lab. Paint walls and forest, move start/goal, and race the four algorithms. Which wins when the map is open? When it is a maze? When terrain varies?',
+   build:()=>{ setSize(20); start={r:2,c:2}; goal={r:17,c:17}; }},
+];
+let curLevel=0;
+
+function setSize(n){ COLS=ROWS=n; CELL=Math.floor(640/n); blankGrid(); }
+
+function loadLevel(i){
+  curLevel=i;
+  const L=LEVELS[i];
+  blankGrid();
+  L.build();
+  document.getElementById('lvlTitle').textContent='Level '+L.name;
+  document.getElementById('lvlDesc').textContent=L.desc;
+  document.getElementById('algo').value=L.algo;
+  document.getElementById('sandboxCard').style.display=L.sandbox?'block':'none';
+  bestCost=Infinity; rows.clear(); renderMetrics();
+  document.getElementById('verdict').textContent='Run an algorithm, then run another and compare.';
+  resetAnim();
+  document.querySelectorAll('#levelBar button').forEach((b,k)=>b.classList.toggle('active',k===i));
+}
+
+function buildLevelBar(){
+  const bar=document.getElementById('levelBar');
+  LEVELS.forEach((L,i)=>{
+    const b=document.createElement('button');
+    b.textContent=L.name.split(' · ')[0];
+    b.title=L.name;
+    b.onclick=()=>loadLevel(i);
+    bar.appendChild(b);
+  });
+}
+
+// ---------- Sandbox painting ----------
+let painting=false, brush='wall';
+function cellFromEvent(e){
+  const rect=canvas.getBoundingClientRect();
+  const c=Math.floor((e.clientX-rect.left)/CELL);
+  const r=Math.floor((e.clientY-rect.top)/CELL);
+  return inBounds(r,c)?{r,c}:null;
+}
+function paint(e){
+  if(!LEVELS[curLevel].sandbox) return;
+  const p=cellFromEvent(e); if(!p) return;
+  if(brush==='start'){ start=p; }
+  else if(brush==='goal'){ goal=p; }
+  else { if((p.r===start.r&&p.c===start.c)||(p.r===goal.r&&p.c===goal.c))return; cells[p.r][p.c]=brush; }
+  resetAnim();
+}
+canvas.addEventListener('mousedown',e=>{painting=true;paint(e);});
+canvas.addEventListener('mousemove',e=>{if(painting)paint(e);});
+window.addEventListener('mouseup',()=>painting=false);
+document.querySelectorAll('.brush').forEach(b=>b.onclick=()=>{
+  brush=b.dataset.brush;
+  document.querySelectorAll('.brush').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active');
+});
+
+// ---------- Wire up ----------
+document.getElementById('run').onclick=runAlgo;
+document.getElementById('step').onclick=stepAlgo;
+document.getElementById('reset').onclick=resetAnim;
+document.getElementById('algo').onchange=resetAnim;
+
+buildLevelBar();
+loadLevel(0);
+</script>
+</body>
+</html>

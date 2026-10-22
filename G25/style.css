@@ -1,0 +1,197 @@
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #14161a;
+  font-family: system-ui, sans-serif;
+}
+
+/* Top-align and allow the page to scroll: when the canvas is taller than the
+   window, the whole thing (including the DOM overlay) stays reachable. */
+body {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  min-height: 100vh;
+  padding: 16px 0;
+  box-sizing: border-box;
+}
+
+#game-container { box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5); }
+canvas { display: block; }
+
+/* ---- shared panel ---- */
+.panel {
+  width: 820px;
+  box-sizing: border-box;
+  background: #1d2128;
+  border: 1px solid #2c313b;
+  border-radius: 12px;
+  padding: 22px 26px;
+  color: #e6e9ee;
+  font-family: system-ui, sans-serif;
+}
+.panel button {
+  margin-top: 14px;
+  background: #ffb02e;
+  color: #201800;
+  border: none;
+  border-radius: 8px;
+  padding: 11px 18px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.panel button:hover { background: #ffc056; }
+.panel button:disabled { background: #4a4a4a; color: #999; cursor: default; }
+.err { color: #ff6b6b; margin-top: 8px; min-height: 18px; font-size: 14px; }
+code { background: #12151a; padding: 1px 5px; border-radius: 4px; color: #ffd27a; }
+
+/* ---- start ---- */
+.start-panel { width: 560px; }
+.start-panel .brief { color: #b8c0cc; line-height: 1.55; font-size: 15px; }
+.start-panel label { display: block; margin: 14px 0 4px; font-size: 14px; color: #9aa0a8; }
+.start-panel input {
+  width: 100%; box-sizing: border-box; padding: 9px 11px; font-size: 16px;
+  background: #12151a; border: 1px solid #333a45; border-radius: 7px; color: #fff;
+}
+
+.home-board { margin-top: 18px; border-top: 1px solid #2c313b; padding-top: 12px; }
+.home-board-title { font-size: 14px; color: #ffb02e; font-weight: 700; margin-bottom: 6px; }
+.home-board.empty { margin-top: 18px; border-top: 1px solid #2c313b; padding-top: 12px; color: #7d8590; font-size: 13px; }
+
+/* ---- room ---- */
+.room-panel { width: 880px; }
+.room-head { display: flex; justify-content: space-between; align-items: flex-start; }
+.room-title { font-size: 24px; font-weight: 700; color: #ffb02e; }
+.room-count { font-size: 13px; color: #7d8590; margin-left: 8px; font-weight: 400; }
+.room-flavor { color: #9aa0a8; font-size: 14px; margin-top: 3px; max-width: 480px; }
+.hp-box { text-align: right; min-width: 160px; }
+.hp-label { font-size: 13px; color: #b8c0cc; margin-bottom: 3px; }
+.hp-bar { width: 160px; height: 14px; background: #12151a; border-radius: 7px; overflow: hidden; border: 1px solid #333a45; }
+.hp-fill { height: 100%; background: linear-gradient(90deg,#4fd07b,#8ee06a); transition: width .3s; }
+.hp-num { font-size: 12px; color: #7d8590; margin-top: 3px; }
+
+.request {
+  margin: 14px 0 6px; padding: 10px 14px; background: #12151a;
+  border-left: 3px solid #4fa3ff; border-radius: 4px;
+  font-style: italic; color: #cdd4de; font-size: 15px;
+}
+.tree-hint { font-size: 13px; color: #7d8590; margin-bottom: 10px; }
+.tree-hint b { color: #cdd4de; }
+.hp-bonus { margin-top: 6px; color: #4fd07b; font-size: 14px; }
+.hp-bonus b { color: #8ee06a; }
+
+/* category (equipment slot) grouping */
+.cat-block {
+  border: 1px solid #2c313b; border-radius: 8px;
+  margin-bottom: 10px; padding: 8px 12px 4px; background: #191d24;
+}
+.cat-head {
+  display: grid; grid-template-columns: 1.7fr 2.2fr 0.5fr 1.5fr;
+  align-items: center; gap: 10px; padding-bottom: 6px;
+  border-bottom: 1px dashed #2c313b; margin-bottom: 4px;
+}
+.wnum { font-variant-numeric: tabular-nums; text-align: center; color: #e6e9ee; font-weight: 600; }
+.cat-wnum { color: #4fa3ff; }
+.cat-name { font-weight: 700; font-size: 15px; color: #e6e9ee; }
+.cat-share { font-size: 13px; color: #9aa0a8; text-align: right; }
+.cat-share b { color: #4fa3ff; }
+.cslider { width: 100%; accent-color: #4fa3ff; }
+
+.item-row.tree {
+  display: grid;
+  grid-template-columns: 1.7fr 0.8fr 2.2fr 0.5fr 1fr 0.8fr 0.9fr;
+  align-items: center; gap: 10px;
+  padding: 6px 2px 6px 14px; border-bottom: 1px solid #23272f;
+}
+.item-row.tree:last-child { border-bottom: none; }
+.within { font-size: 12px; color: #7d8590; text-align: right; font-variant-numeric: tabular-nums; }
+.item-name { font-weight: 600; font-size: 14px; }
+.tier-badge { font-size: 11px; border: 1px solid; border-radius: 10px; padding: 1px 7px; justify-self: start; }
+.islider { width: 100%; accent-color: #ffb02e; }
+.actual { font-variant-numeric: tabular-nums; font-weight: 700; text-align: right; }
+.actual.good { color: #4fd07b; }
+.actual.close { color: #ffd27a; }
+.actual.bad { color: #ff6b6b; }
+.target { font-size: 13px; color: #9aa0a8; }
+.target.distractor { color: #5b6069; font-style: italic; }
+
+.summary {
+  display: flex; gap: 26px; margin-top: 14px; font-size: 14px; color: #b8c0cc;
+}
+.summary .dmg { color: #ff8a5b; }
+
+.result {
+  margin-top: 14px; padding: 12px 16px; background: #12151a;
+  border-radius: 8px; border: 1px solid #2c313b;
+}
+.result.hidden { display: none; }
+.res-title { font-size: 18px; font-weight: 700; color: #4fd07b; margin-bottom: 4px; }
+.res-title.dead { color: #ff6b6b; }
+.feedback { margin: 8px 0 0; padding-left: 20px; font-size: 14px; color: #cdd4de; line-height: 1.5; }
+.feedback li { margin-bottom: 5px; }
+.feedback li b { color: #ffd27a; }
+.feedback.perfect { list-style: none; padding-left: 0; color: #4fd07b; font-weight: 600; }
+
+/* ---- forge (code levels) ---- */
+.forge-panel { width: 720px; }
+.forge-sub { font-size: 13px; color: #9aa0a8; margin-top: 3px; }
+.forge-intro { color: #b8c0cc; font-size: 15px; line-height: 1.5; }
+.code-block {
+  background: #0e1013; border: 1px solid #2c313b; border-radius: 8px;
+  padding: 12px 14px; margin: 8px 0; overflow-x: auto;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 14px; color: #cfe3ff; line-height: 1.55;
+}
+.code-block.fixed { opacity: 0.85; }
+.code-line { white-space: pre; }
+.blank {
+  background: #2a2410; color: #ffd27a; border: 1px dashed #ffb02e;
+  border-radius: 4px; padding: 0 4px;
+}
+.opt-list { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+.opt-btn {
+  text-align: left; background: #12151a; border: 1px solid #333a45;
+  border-radius: 8px; padding: 10px 12px; cursor: pointer; color: #e6e9ee;
+  font-size: 14px; margin: 0;
+}
+.opt-btn:hover { border-color: #ffb02e; background: #191d24; }
+.opt-btn code { background: none; color: #cfe3ff; }
+
+.line-list { display: flex; flex-direction: column; gap: 6px; margin: 8px 0; }
+.line-tile {
+  display: flex; align-items: center; justify-content: space-between;
+  background: #0e1013; border: 1px solid #2c313b; border-radius: 7px;
+  padding: 6px 8px 6px 12px;
+}
+.line-code { font-family: Consolas, monospace; font-size: 13.5px; }
+.line-code code { background: none; color: #cfe3ff; }
+.line-moves { display: flex; gap: 4px; }
+.mv {
+  margin: 0; padding: 2px 9px; font-size: 14px; background: #262b34;
+  color: #cdd4de; border: none; border-radius: 5px; cursor: pointer;
+}
+.mv:hover:not(:disabled) { background: #3a414d; }
+.mv:disabled { opacity: 0.3; cursor: default; }
+.retry-note { margin-top: 6px; color: #9aa0a8; font-size: 13px; }
+.hint-box {
+  margin-top: 8px; padding: 9px 12px; background: #16223a;
+  border-left: 3px solid #4fa3ff; border-radius: 4px;
+  color: #cfe0ff; font-size: 13.5px; line-height: 1.5;
+}
+.hint-box b { color: #7dbcff; }
+.hint-box ul { margin: 6px 0 0; padding-left: 18px; }
+.hint-box li { margin-bottom: 4px; }
+.answer-label { margin-top: 10px; font-size: 13px; color: #9aa0a8; text-transform: uppercase; letter-spacing: .04em; }
+.ans-correct { color: #4fd07b; }
+.ans-wrong { background: #3a1a1a; color: #ff9b9b; padding: 0 4px; border-radius: 4px; }
+
+/* ---- scoreboard ---- */
+.score-panel { width: 560px; text-align: center; }
+.summary-line { color: #b8c0cc; font-size: 16px; }
+.score-big { font-size: 20px; }
+.score-big b { color: #ffb02e; }
+.board { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+.board th, .board td { padding: 7px 8px; border-bottom: 1px solid #23272f; text-align: left; }
+.board th { color: #6b727c; font-weight: 600; }
+.board tr.mine td { background: #2a2410; color: #ffd27a; font-weight: 700; }

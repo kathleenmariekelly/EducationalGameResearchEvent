@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Kingdom Defense</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@600&display=swap" rel="stylesheet" />
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; background: radial-gradient(circle at 50% -10%, #1d2333, #10121a 60%);
+    color: #e6e8ee; font: 15px/1.5 system-ui, sans-serif;
+    display: flex; flex-direction: column; align-items: center; padding: 24px;
+  }
+  #bgCanvas { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 0; pointer-events: none; }
+  .screen { width: 100%; max-width: 860px; display: flex; flex-direction: column; align-items: center; gap: 18px; position: relative; z-index: 1; }
+  .screen[hidden] { display: none; }
+  [hidden] { display: none !important; }
+  .screen:not([hidden]) { animation: pageIn .28s ease both; }
+  @keyframes pageIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  h1 { font-size: 42px; margin: 0; letter-spacing: 1px; text-align: center; }
+  /* epic title on the home screen */
+  #title h1 {
+    font-family: "Cinzel Decorative", "Cinzel", serif;
+    font-weight: 900;
+    font-size: clamp(46px, 9vw, 84px);
+    line-height: 1.05;
+    letter-spacing: 2px;
+    background: linear-gradient(180deg, #ffffff 0%, #eef2f7 40%, #c3ccd6 72%, #9aa6b3 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: #eef2f7;
+    text-shadow: 0 2px 0 rgba(0,0,0,0.25), 0 0 26px rgba(220,230,245,0.35);
+    filter: drop-shadow(0 4px 10px rgba(0,0,0,0.5));
+    animation: titleGlow 3.5s ease-in-out infinite;
+  }
+  @keyframes titleGlow {
+    0%, 100% { filter: drop-shadow(0 4px 10px rgba(0,0,0,0.5)) drop-shadow(0 0 6px rgba(210,224,245,0.18)); }
+    50%      { filter: drop-shadow(0 4px 10px rgba(0,0,0,0.5)) drop-shadow(0 0 18px rgba(210,224,245,0.5)); }
+  }
+  #title .sub { font-family: "Cinzel", serif; letter-spacing: .5px; }
+  h2 { font-size: 24px; margin: 6px 0; }
+  .sub { opacity: .7; margin-top: -6px; }
+  button, select, input {
+    font: inherit; color: #e6e8ee; background: #262a34; border: 1px solid #363c49;
+    border-radius: 8px; padding: 8px 14px; cursor: pointer;
+  }
+  button:hover { background: #2f3542; }
+  button.primary { background: #3b82f6; border-color: #3b82f6; font-weight: 600; }
+  button.primary:hover { background: #2f6fe0; }
+  button.on { background: #3b82f6; border-color: #3b82f6; }
+  .menu { display: flex; flex-direction: column; gap: 12px; width: 260px; margin-top: 12px; }
+  .menu button { padding: 14px; font-size: 17px; }
+  .banner-big { font-size: 64px; }
+
+  /* level cards */
+  #levelList { display: grid; grid-template-columns: 1fr; gap: 14px; width: 100%; }
+  @media (min-width: 700px) { #levelList { grid-template-columns: 1fr 1fr 1fr; } }
+  .card { background: #1a1e28; border: 1px solid #2c313d; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+  .card-world { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #7aa7ff; }
+  .card h3 { margin: 0; font-size: 17px; }
+  .card p { margin: 0; opacity: .75; font-size: 13px; flex: 1; }
+  .card-meta { font-size: 12px; opacity: .55; }
+  .card button { margin-top: 6px; }
+
+  /* customize */
+  #customForm { display: flex; flex-direction: column; gap: 16px; width: 380px; background: #1a1e28; padding: 22px; border-radius: 12px; border: 1px solid #2c313d; }
+  #customForm label { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  #customForm input[type=color] { width: 54px; height: 34px; padding: 2px; }
+  #customForm input[type=text] { flex: 1; }
+  #bannerPick, .pet-pick { display: flex; flex-wrap: wrap; gap: 8px; }
+  .banner { font-size: 22px; padding: 6px 10px; }
+  .pick-label { margin-bottom: 8px; font-size: 13px; opacity: .85; }
+
+  /* play */
+  .bar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; justify-content: center; }
+  #playHud { font-variant-numeric: tabular-nums; opacity: .9; text-align: center; }
+  canvas { border: 1px solid #363c49; border-radius: 10px; cursor: crosshair; background: #14161c; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; opacity: .7; font-size: 12px; }
+  .sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; margin-right: 4px; }
+  .tut { max-width: 640px; text-align: left; background: #1a1e28; border: 1px solid #2c313d; border-radius: 12px; padding: 22px; }
+  .tut h3 { margin: 16px 0 4px; color: #7aa7ff; }
+  .tut p, .tut li { opacity: .85; }
+  .back { align-self: flex-start; }
+
+  /* quiz modal */
+  .modal { position: fixed; inset: 0; background: rgba(6,8,12,0.78);
+    display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 50; }
+  .modal-box { background: #1a1e28; border: 1px solid #2c313d; border-radius: 14px;
+    padding: 22px; width: 100%; max-width: 540px; display: flex; flex-direction: column; gap: 14px; }
+  .quiz-head { display: flex; justify-content: space-between; align-items: center; }
+  .quiz-tag { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #7aa7ff; }
+  .quiz-close { background: none; border: none; font-size: 18px; padding: 2px 8px; }
+  .quiz-prompt { font-size: 17px; font-weight: 600; }
+  .quiz-body { display: flex; flex-direction: column; gap: 8px; }
+  .choice { text-align: left; padding: 10px 14px; }
+  .choice.sel { background: #2d4a7a; border-color: #3b82f6; }
+  .choice.correct { background: #1f5136; border-color: #4ade80; }
+  .choice.reveal { border-color: #4ade80; box-shadow: 0 0 0 2px #4ade8055 inset; }
+  .answer-line { border-left-color: #4ade80 !important; background: #16301f !important; }
+  #quizInput { width: 100%; padding: 10px 14px; font-size: 15px; }
+  .quiz-hints { display: flex; flex-direction: column; gap: 6px; }
+  .hint-line { margin: 0; padding: 8px 12px; background: #232a1c; border-left: 3px solid #d4c24a;
+    border-radius: 6px; font-size: 13px; }
+  .quiz-actions { display: flex; gap: 10px; justify-content: flex-end; }
+  #quizFeedback { font-size: 14px; }
+  #quizFeedback.good { color: #4ade80; }
+  #quizFeedback.warn { color: #ffb454; }
+  #quizFeedback .explain { color: #cdd3df; font-size: 13px; }
+  #quizFeedback .dim { opacity: .7; font-size: 12px; }
+
+  /* results */
+  .stats-grid { display: grid; grid-template-columns: repeat(2, minmax(140px, 1fr)); gap: 12px; width: 100%; max-width: 480px; }
+  @media (min-width: 640px) { .stats-grid { grid-template-columns: repeat(4, 1fr); } }
+  .stat { background: #1a1e28; border: 1px solid #2c313d; border-radius: 10px; padding: 14px; text-align: center; }
+  .stat .big { font-size: 26px; font-weight: 700; }
+  .stat .lbl { font-size: 12px; opacity: .65; margin-top: 2px; }
+  .concept-tags { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .tag { background: #23324d; color: #9ecbff; border-radius: 999px; padding: 4px 12px; font-size: 12px; }
+  .diff-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; opacity: .8; font-size: 13px; }
+
+  /* my questions */
+  .qform { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 560px;
+    background: #1a1e28; border: 1px solid #2c313d; border-radius: 12px; padding: 20px; }
+  .qrow { display: flex; gap: 12px; flex-wrap: wrap; }
+  .qrow label { flex: 1; display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+  .qform .full { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+  .qform textarea, .qform input[type=text], .qform input:not([type]) { width: 100%; padding: 8px 10px;
+    background: #262a34; color: #e6e8ee; border: 1px solid #363c49; border-radius: 6px; font: inherit; resize: vertical; }
+  .qhint-label, .qform .dimlabel { font-size: 12px; opacity: .6; }
+  .mc-choice { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+  .mc-choice input:not([type=radio]) { flex: 1; }
+  .qform-msg { font-size: 13px; min-height: 16px; }
+  .qform-msg.err { color: #ffb454; }
+  .qform-msg.ok { color: #4ade80; }
+  .qlist-head { align-self: flex-start; }
+  .qlist { display: flex; flex-direction: column; gap: 8px; width: 100%; max-width: 560px; }
+  .qitem { background: #1a1e28; border: 1px solid #2c313d; border-radius: 8px; padding: 10px 12px;
+    display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
+  .qitem .qmeta { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #7aa7ff; }
+  .qitem .qtext { font-size: 13px; opacity: .9; }
+  .qitem button { background: #3a2530; border-color: #5a2f3f; font-size: 12px; padding: 4px 10px; }
+  .qempty { opacity: .55; font-size: 13px; }
+
+  /* flashcards */
+  .fc-controls { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; justify-content: center; }
+  .fc-controls label { display: flex; gap: 6px; align-items: center; font-size: 13px; }
+  .flashcard { width: 100%; max-width: 520px; height: 300px; perspective: 1200px; cursor: pointer; }
+  .fc-inner { position: relative; width: 100%; height: 100%; transition: transform .5s;
+    transform-style: preserve-3d; }
+  .flashcard.flipped .fc-inner { transform: rotateY(180deg); }
+  .fc-face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden;
+    border-radius: 16px; border: 1px solid #2c313d; padding: 26px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; text-align: center; }
+  .fc-front { background: linear-gradient(160deg, #1e2431, #171b24); }
+  .fc-back { background: linear-gradient(160deg, #17281d, #14201a); transform: rotateY(180deg); }
+  .fc-tag { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #7aa7ff; }
+  .fc-q { font-size: 19px; font-weight: 600; }
+  .fc-choices { display: flex; flex-direction: column; gap: 4px; font-size: 13px; opacity: .8; }
+  .fc-a { font-size: 22px; font-weight: 700; color: #4ade80; }
+  .fc-exp { font-size: 13px; opacity: .85; }
+  .fc-fliphint { font-size: 12px; opacity: .5; margin-top: 4px; }
+  .fc-nav { display: flex; gap: 16px; align-items: center; }
+  .fc-nav #fcCounter { font-variant-numeric: tabular-nums; opacity: .7; min-width: 70px; text-align: center; }
+</style>
+</head>
+<body>
+  <canvas id="bgCanvas"></canvas>
+
+  <!-- ===== TITLE ===== -->
+  <section id="title" class="screen">
+    <div class="banner-big" id="titleBanner">🏰</div>
+    <h1>Kingdom Defense</h1>
+    <p class="sub">Defend <strong id="titleKingdom">Aetheria</strong> by shaping the land against pathfinding invaders.</p>
+    <div class="menu">
+      <button class="primary" data-go="levels">▶ Start Level</button>
+      <button data-go="customize">🎨 Customize Kingdom</button>
+      <button data-go="questions">✍️ My Questions</button>
+      <button data-go="flashcards">🃏 Flashcards</button>
+      <button data-go="tutorial">📖 Tutorial</button>
+    </div>
+  </section>
+
+  <!-- ===== LEVEL SELECT ===== -->
+  <section id="levels" class="screen" hidden>
+    <button class="back" data-go="title">← Back</button>
+    <h2>Choose Your Battle</h2>
+    <div id="levelList"></div>
+  </section>
+
+  <!-- ===== CUSTOMIZE ===== -->
+  <section id="customize" class="screen" hidden>
+    <button class="back" data-go="title">← Back</button>
+    <h2>Customize Kingdom</h2>
+    <form id="customForm">
+      <label>Kingdom Name <input type="text" name="kingdomName" maxlength="18" /></label>
+      <div>
+        <div class="pick-label">🐾 Your Soldiers (defenders)</div>
+        <div id="soldierPick" class="pet-pick"></div>
+      </div>
+      <div>
+        <div class="pick-label">😾 The Invaders</div>
+        <div id="enemyPick" class="pet-pick"></div>
+      </div>
+      <div>
+        <div class="pick-label">🏰 Keep Banner</div>
+        <div id="bannerPick"></div>
+      </div>
+      <label>Path Color <input type="color" name="pathColor" /></label>
+      <button class="primary" type="submit">Save</button>
+    </form>
+  </section>
+
+  <!-- ===== MY QUESTIONS ===== -->
+  <section id="questions" class="screen" hidden>
+    <button class="back" data-go="title">← Back</button>
+    <h2>My Questions</h2>
+    <p class="sub">Write your own study questions — they'll appear in matching levels alongside the built-in ones.</p>
+    <form id="questionForm" class="qform">
+      <div class="qrow">
+        <label>Topic
+          <select name="algo">
+            <option value="bfs">BFS</option>
+            <option value="dfs">DFS</option>
+            <option value="dijkstra">Dijkstra</option>
+            <option value="astar">A*</option>
+            <option value="general">General</option>
+          </select>
+        </label>
+        <label>Difficulty
+          <select name="difficulty">
+            <option value="easy">Easy</option>
+            <option value="medium">Medium</option>
+            <option value="hard">Hard</option>
+          </select>
+        </label>
+        <label>Type
+          <select name="type" id="qType">
+            <option value="mc">Multiple choice</option>
+            <option value="fill">Free response</option>
+          </select>
+        </label>
+      </div>
+      <label class="full">Question
+        <textarea name="prompt" rows="2" placeholder="e.g. Which data structure does BFS use?" required></textarea>
+      </label>
+
+      <div id="mcFields">
+        <div class="qhint-label">Choices (pick the correct one)</div>
+        <label class="mc-choice"><input type="radio" name="correct" value="0" checked><input name="c0" placeholder="Choice 1"></label>
+        <label class="mc-choice"><input type="radio" name="correct" value="1"><input name="c1" placeholder="Choice 2"></label>
+        <label class="mc-choice"><input type="radio" name="correct" value="2"><input name="c2" placeholder="Choice 3 (optional)"></label>
+        <label class="mc-choice"><input type="radio" name="correct" value="3"><input name="c3" placeholder="Choice 4 (optional)"></label>
+      </div>
+      <div id="fillFields" hidden>
+        <label class="full">Accepted answers (comma-separated — not case sensitive)
+          <input name="accepted" placeholder="queue, a queue, fifo queue">
+        </label>
+      </div>
+
+      <label class="full">Hint 1 <span class="dimlabel">(optional)</span> <input name="h0"></label>
+      <label class="full">Hint 2 <span class="dimlabel">(optional)</span> <input name="h1"></label>
+      <label class="full">Hint 3 <span class="dimlabel">(optional)</span> <input name="h2"></label>
+      <label class="full">Explanation <span class="dimlabel">(shown after answering)</span>
+        <textarea name="explain" rows="2" placeholder="Why is this the answer?"></textarea>
+      </label>
+      <div id="qFormMsg" class="qform-msg"></div>
+      <button class="primary" type="submit">➕ Add Question</button>
+    </form>
+    <h3 class="qlist-head">Your Questions (<span id="qCount">0</span>)</h3>
+    <div id="qList" class="qlist"></div>
+  </section>
+
+  <!-- ===== FLASHCARDS ===== -->
+  <section id="flashcards" class="screen" hidden>
+    <button class="back" data-go="title">← Back</button>
+    <h2>Flashcards</h2>
+    <p class="sub">Flip through questions and answers to study. Click the card to reveal the answer.</p>
+    <div class="fc-controls">
+      <label>Topic
+        <select id="fcTopic">
+          <option value="all">All topics</option>
+          <option value="bfs">BFS</option>
+          <option value="dfs">DFS</option>
+          <option value="dijkstra">Dijkstra</option>
+          <option value="astar">A*</option>
+          <option value="general">General</option>
+        </select>
+      </label>
+      <button id="fcShuffle">🔀 Shuffle</button>
+    </div>
+    <div class="flashcard" id="flashcard">
+      <div class="fc-inner" id="fcInner">
+        <div class="fc-face fc-front" id="fcFront"></div>
+        <div class="fc-face fc-back" id="fcBack"></div>
+      </div>
+    </div>
+    <div class="fc-nav">
+      <button id="fcPrev">← Prev</button>
+      <span id="fcCounter">0 / 0</span>
+      <button id="fcNext">Next →</button>
+    </div>
+  </section>
+
+  <!-- ===== TUTORIAL ===== -->
+  <section id="tutorial" class="screen" hidden>
+    <button class="back" data-go="title">← Back</button>
+    <h2>How to Play</h2>
+    <div class="tut">
+      <p><strong>Goal:</strong> invaders spawn at the green gate and march toward your keep <span id="tutBanner">🏰</span>.
+      Place your cute soldiers to <strong>block and reroute</strong> the enemies AND <strong>attack</strong> any that wander within range.
+      Each enemy has a health bar — whittle it down before they reach your keep. Enemies get tougher every wave!</p>
+
+      <h3>Painting the map</h3>
+      <ul>
+        <li><strong>🐾 Soldier</strong> — the only blocker: enemies path <em>around</em> it, so use soldiers to reshape the route. Soldiers also shoot nearby enemies.</li>
+        <li><strong>🌿 Swamp</strong> — goes right on the path; enemies wade through at half speed (unlock: medium/hard question).</li>
+        <li><strong>☠️ Gas</strong> — goes right on the path; poisons enemies for damage over time (unlock: hard question).</li>
+        <li><strong>❄️ Frost</strong> — goes right on the path; freezes enemies to 40% speed so soldiers get more shots (unlock: medium/hard question).</li>
+        <li><strong>Erase</strong> — remove a defense and refund its charge.</li>
+      </ul>
+      <p style="opacity:.8;font-size:13px"><strong>Key idea:</strong> only 🐾 soldiers block and reroute the path — that's where the pathfinding reacts. Swamp, gas, and frost are effects you lay <em>on</em> the path itself.</p>
+
+      <h3>The algorithms (one per world)</h3>
+      <ul>
+        <li><strong>BFS</strong> — finds the fewest <em>steps</em>. Ignores swamp cost entirely.</li>
+        <li><strong>Dijkstra</strong> — finds the <em>cheapest</em> route, so it detours around swamp.</li>
+        <li><strong>A*</strong> — Dijkstra plus a heuristic to search faster. A <em>bad</em> heuristic makes it wander — that's the lesson in admissibility.</li>
+      </ul>
+
+      <h3>Watch it think</h3>
+      <p>The faint blue tiles show the <strong>search frontier</strong> — every cell the algorithm
+      explored while finding the route. The gold line is the path it chose. Watch how each
+      algorithm searches differently!</p>
+
+      <button class="primary" data-go="levels" style="margin-top:16px">Start Defending →</button>
+    </div>
+  </section>
+
+  <!-- ===== PLAY ===== -->
+  <section id="play" class="screen" hidden>
+    <button class="back" id="btnExit">← Quit to Menu</button>
+    <h2 id="playTitle"></h2>
+    <div class="bar">
+      <label>Algorithm <select id="playAlgo"></select></label>
+      <button data-paint="wall" class="on">🐾 Soldier</button>
+      <button data-paint="swamp">🌿 Swamp</button>
+      <button data-paint="gas">☠️ Gas</button>
+      <button data-paint="frost">❄️ Frost</button>
+      <button data-paint="erase">Erase</button>
+      <button id="btnQuiz" class="primary">🧠 Earn Defenses</button>
+      <button id="btnWave">▶ Send Wave</button>
+      <button id="btnReset">Reset Map</button>
+    </div>
+    <div id="playHud"></div>
+    <canvas id="gameCanvas"></canvas>
+    <div class="legend">
+      <span>⛺ Enemy camp (start)</span>
+      <span><span class="sw" style="background:#f87171"></span>Keep (goal)</span>
+      <span><span class="sw" style="background:#4b4f5c"></span>Wall</span>
+      <span><span class="sw" style="background:#3a2f18"></span>Swamp (slow)</span>
+      <span><span class="sw" style="background:#2f3a1c"></span>☠️ Gas (poison)</span>
+      <span><span class="sw" style="background:#26384a"></span>❄️ Frost (slow)</span>
+      <span><span class="sw" style="background:#5aa0ff"></span>Search frontier</span>
+      <span><span class="sw" style="background:#ffd24a"></span>Chosen path</span>
+    </div>
+  </section>
+
+  <!-- ===== RESULTS ===== -->
+  <section id="results" class="screen" hidden>
+    <div id="resultsBanner" class="banner-big"></div>
+    <h1 id="resultsTitle"></h1>
+    <p class="sub" id="resultsSub"></p>
+    <div class="stats-grid" id="statsGrid"></div>
+    <div id="conceptTags" class="concept-tags"></div>
+    <div class="menu">
+      <button class="primary" id="btnNext">Next Level →</button>
+      <button id="btnRetry">Retry Level</button>
+      <button data-go="levels">Level Select</button>
+      <button data-go="title">Main Menu</button>
+    </div>
+  </section>
+
+  <!-- ===== QUIZ MODAL ===== -->
+  <div id="quizModal" class="modal" hidden>
+    <div class="modal-box">
+      <div class="quiz-head">
+        <span id="quizTag" class="quiz-tag"></span>
+        <button id="quizClose" class="quiz-close" title="Close">✕</button>
+      </div>
+      <div id="quizPrompt" class="quiz-prompt"></div>
+      <div id="quizBody" class="quiz-body"></div>
+      <div id="quizHintArea" class="quiz-hints"></div>
+      <div class="quiz-actions">
+        <button id="quizHintBtn">💡 Hint</button>
+        <button id="quizSubmit" class="primary">Submit</button>
+      </div>
+      <div id="quizFeedback"></div>
+    </div>
+  </div>
+
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

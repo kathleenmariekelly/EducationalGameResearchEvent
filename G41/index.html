@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ML Machine Repair</title>
+  <link rel="stylesheet" href="src/styles.css" />
+</head>
+<body>
+  <div class="world-bg" aria-hidden="true">
+    <div class="gear gear-a">⚙</div>
+    <div class="gear gear-b">⚙</div>
+    <div class="pipe pipe-a"></div>
+    <div class="pipe pipe-b"></div>
+    <div class="smog"></div>
+  </div>
+  <main class="game-shell">
+    <header class="top-bar">
+      <div>
+        <h1>ML Machine Repair</h1>
+        <p>Salvage broken intelligences in a collapsed machine city. Tune the diagnosis, probe carefully, and install the strongest repair module.</p>
+      </div>
+      <div class="score-card">
+        <div id="roundLabel">Machine 1/8</div>
+        <div id="scoreLabel">Score: 0</div>
+        <div id="integrityLabel">Integrity: 100%</div>
+        <div class="integrity-track"><div id="integrityFill" class="integrity-fill"></div></div>
+      </div>
+    </header>
+
+    <section class="layout">
+      <article class="panel report-panel">
+        <h2 id="machineName">Machine name</h2>
+        <div class="warning-strip">SECTOR WORKSHOP // SIGNAL UNSTABLE</div>
+        <div id="robotCore" class="robot-core">
+          <div class="robot-eye"></div>
+          <div class="robot-eye"></div>
+          <div class="robot-mouth"></div>
+        </div>
+        <p id="machineSymptom"></p>
+        <div class="contract-box">
+          <strong>Repair contract</strong>
+          <div>🥇 Gold: best module + 76% integrity</div>
+          <div>🥈 Silver: best module or clean diagnosis</div>
+          <div>🥉 Bronze: partial repair</div>
+        </div>
+      </article>
+
+      <article class="panel board-panel">
+        <h2>Diagnostic console</h2>
+        <div class="dial-row" data-slot="data">
+          <span class="dial-label">Data signal</span>
+          <button class="dial-btn" data-dir="-1">◀</button>
+          <button id="dataDial" class="dial-value">unset</button>
+          <button class="dial-btn" data-dir="1">▶</button>
+        </div>
+        <div class="dial-row" data-slot="target">
+          <span class="dial-label">Target / goal</span>
+          <button class="dial-btn" data-dir="-1">◀</button>
+          <button id="targetDial" class="dial-value">unset</button>
+          <button class="dial-btn" data-dir="1">▶</button>
+        </div>
+        <div class="dial-row" data-slot="pattern">
+          <span class="dial-label">Pattern clue</span>
+          <button class="dial-btn" data-dir="-1">◀</button>
+          <button id="patternDial" class="dial-value">unset</button>
+          <button class="dial-btn" data-dir="1">▶</button>
+        </div>
+
+        <h3>Live diagnostic readout</h3>
+        <div id="diagnosticReadout" class="readout">Tune the evidence dials to power the readout.</div>
+        <h3>Vocabulary key</h3>
+        <div class="vocab-key">
+          <span class="module-tag tag-supervised">📚 supervised</span>
+          <span class="module-tag tag-unsupervised">🧭 unsupervised</span>
+          <span class="module-tag tag-output">🎯 output type</span>
+          <span class="module-tag tag-pattern">〰️ pattern clue</span>
+          <span class="module-tag tag-shape">🧩 model shape</span>
+        </div>
+      </article>
+
+      <article class="panel module-panel">
+        <h2>Model modules</h2>
+        <p class="small-note">Select a module. You can probe it for clues, but every probe damages the machine.</p>
+        <div id="moduleGrid" class="module-grid"></div>
+      </article>
+
+      <article class="panel analysis-panel">
+        <h2>Repair analysis</h2>
+        <div id="analysisText" class="analysis-text">Build a diagnosis, choose a model module, optionally probe modules, then commit the final repair.</div>
+        <div class="actions">
+          <button id="probeButton" class="warning">Probe selected module (damages integrity)</button>
+          <button id="testButton" class="primary">Commit final repair</button>
+          <button id="nextButton" class="secondary hidden">Next machine</button>
+        </div>
+      </article>
+    </section>
+  </main>
+
+  <script src="src/data/scenarios.js"></script>
+  <script src="src/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,1128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Tower Defense: Classes &amp; Objects</title>
+<style>
+  html, body {
+    margin: 0; height: 100%;
+    background: #0d0f16; color: #ebeef5;
+    font-family: Consolas, "Courier New", monospace;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+  }
+  h1 { font-size: 18px; margin: 10px 0 6px; font-weight: 600; color: #cdd3e0; }
+  #wrap { display: flex; flex-direction: column; align-items: center; }
+  canvas {
+    background: #181c26;
+    border: 1px solid #2a3040;
+    border-radius: 6px;
+    max-width: 98vw; max-height: 88vh;
+    image-rendering: auto;
+  }
+  #status { min-height: 20px; margin: 8px 0 2px; font-size: 14px; color: #ebeef5;
+            font-family: Consolas, monospace; max-width: 96vw; text-align: center; }
+  #hint { font-size: 12px; color: #7a8398; margin: 4px 0 6px; }
+  #bar { display: none; align-items: center; gap: 8px; margin: 4px 0 12px;
+         font-size: 14px; flex-wrap: wrap; justify-content: center; max-width: 96vw; }
+  #barLabel { color: #969ca8; }
+  #barInput { font-family: inherit; font-size: 15px; padding: 6px 10px; width: 300px;
+              background: #0f131c; color: #7fe6b0; border: 1px solid #2a3040;
+              border-radius: 4px; outline: none; }
+  #barInput:focus { border-color: #4a5a80; }
+  #barMsg { color: #f0d25a; }
+
+  .overlay { position: fixed; inset: 0; background: rgba(6,8,14,0.82);
+             display: flex; align-items: center; justify-content: center; z-index: 10; }
+  .overlay .panel { background: #131722; border: 1px solid #2a3040; border-radius: 8px;
+             padding: 18px 22px; width: min(700px, 94vw); max-height: 94vh; overflow: auto;
+             box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+  .panel h2 { margin: 0 0 6px; color: #f0d25a; font-size: 20px; }
+  .panel p { margin: 4px 0 10px; color: #aeb6c6; font-size: 13px; line-height: 1.45; }
+  .panel code { color: #7fe6b0; }
+  #abilities { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px 14px; margin-bottom: 12px; }
+  #abilities label { font-size: 13px; color: #dfe4ee; display: flex; gap: 7px; align-items: flex-start;
+                     background: #0f131c; border: 1px solid #232a38; border-radius: 5px; padding: 7px 9px; }
+  #abilities small { color: #7a8398; }
+  #abilities input:disabled + span { opacity: 0.4; }
+  #example { margin: 0 0 12px; padding: 9px 11px; background: #0c0f16; border: 1px dashed #2a3040;
+             border-radius: 5px; color: #8a93a6; font-family: Consolas, monospace; font-size: 13px;
+             white-space: pre; overflow-x: auto; }
+  #code { width: 100%; height: 190px; box-sizing: border-box; font-family: Consolas, monospace;
+          font-size: 14px; background: #0f131c; color: #7fe6b0; border: 1px solid #2a3040;
+          border-radius: 5px; padding: 10px; outline: none; resize: vertical; white-space: pre; }
+  #designInfo { font-size: 12px; color: #f0d25a; margin: 8px 0 4px; }
+  #designMsg { font-size: 13px; color: #dc6b6b; white-space: pre-line; min-height: 18px; margin: 6px 0; }
+  #buildBtn { font-family: inherit; font-size: 15px; padding: 8px 20px; cursor: pointer;
+              background: #2e7d55; color: #eafff2; border: none; border-radius: 5px; }
+  #buildBtn:hover { background: #379566; }
+  #skipBtn { font-family: inherit; font-size: 15px; padding: 8px 18px; cursor: pointer;
+             margin-left: 8px; background: #2a3040; color: #cdd3e0; border: none; border-radius: 5px; }
+  #skipBtn:hover { background: #353d50; }
+
+  #tutorial .panel { width: min(640px, 94vw); }
+  .tut-body { color: #cdd3e0; font-size: 14px; line-height: 1.55; min-height: 175px; }
+  .tut-body b { color: #f0d25a; }
+  .tut-body i { color: #aeb6c6; }
+  .tut-body code { color: #7fe6b0; }
+  .tut-body pre { background: #0c0f16; border: 1px dashed #2a3040; border-radius: 5px;
+                  padding: 10px; color: #7fe6b0; font-size: 13px; margin: 10px 0;
+                  white-space: pre; overflow-x: auto; }
+  .tut-nav { display: flex; gap: 8px; align-items: center; margin-top: 14px; }
+  .tut-nav .spacer { flex: 1; }
+  #tutStep { color: #7a8398; font-size: 12px; }
+  .tutbtn { font-family: inherit; font-size: 14px; padding: 7px 16px; cursor: pointer;
+            border: none; border-radius: 5px; }
+  #tutNext { background: #2e7d55; color: #eafff2; }
+  #tutNext:hover { background: #379566; }
+  #tutBack, #tutSkip { background: #2a3040; color: #cdd3e0; }
+  #tutBack:disabled { opacity: 0.4; cursor: default; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <h1>Tower Defense: Classes &amp; Objects</h1>
+  <canvas id="game" width="960" height="712"></canvas>
+  <div id="status">Press SPACE to start Wave 1</div>
+  <div id="hint">
+    Keys 1/2/3 pick a tower &middot; click a green cell &rarr; NAME it &middot;
+    click a placed tower &rarr; call methods like
+    <code>archer1.upgrade_damage()</code>, <code>archer1.sell()</code> &middot;
+    see stats with <code>print(archer1)</code> &middot; SPACE = next wave &middot;
+    press <b>H</b> for the concept guide
+  </div>
+  <div id="bar">
+    <span id="barLabel"></span>
+    <input id="barInput" type="text" autocomplete="off" spellcheck="false" />
+    <span id="barMsg"></span>
+  </div>
+</div>
+
+<div id="tutorial" class="overlay" style="display:none">
+  <div class="panel">
+    <h2 id="tutTitle"></h2>
+    <div class="tut-body" id="tutBody"></div>
+    <div class="tut-nav">
+      <span id="tutStep"></span>
+      <span class="spacer"></span>
+      <button class="tutbtn" id="tutSkip">Skip</button>
+      <button class="tutbtn" id="tutBack">Back</button>
+      <button class="tutbtn" id="tutNext">Next</button>
+    </div>
+  </div>
+</div>
+
+<div id="design" class="overlay" style="display:none">
+  <div class="panel">
+    <h2 id="designTitle">Design your tower</h2>
+    <p>Pick <b>1 or 2</b> abilities. A <b>focus</b> ability raises that stat's cap;
+       a <b>modifier</b> ability adds behavior (and spends power). Then write the
+       class below — an <code>__init__</code> that sets <code>self.damage</code>,
+       <code>self.range</code>, <code>self.fire_rate</code>, plus any modifier you chose.
+       Keep total <b>power</b> within budget.</p>
+    <p style="margin-bottom:4px">New to this? You already have a <code>BasicTower</code> —
+       read it below and copy the pattern. In game you can run
+       <code>print(name)</code> on any tower to see its stats.</p>
+    <pre id="example">class BasicTower(Tower):
+    def __init__(self):
+        self.damage = 8
+        self.range = 160
+        self.fire_rate = 2.5</pre>
+    <div id="abilities"></div>
+    <textarea id="code" spellcheck="false" placeholder="# type your class here, e.g.&#10;# class MyTower(Tower):&#10;#     def __init__(self):&#10;#         self.damage = ..."></textarea>
+    <div id="designInfo"></div>
+    <div id="designMsg"></div>
+    <button id="buildBtn">Build tower</button>
+    <button id="skipBtn" style="display:none">Skip</button>
+  </div>
+</div>
+<script>
+"use strict";
+
+// ===========================================================================
+//  SETTINGS  (mirrors settings.py)
+// ===========================================================================
+const CELL = 64, COLS = 15, ROWS = 10;
+const PLAY_W = COLS * CELL;        // 960
+const PLAY_H = ROWS * CELL;        // 640
+const HUD_H = 72;
+const WIDTH = PLAY_W, HEIGHT = PLAY_H + HUD_H;
+const START_MONEY = 300, BASE_HP = 20;
+
+const COL = {
+  bg: "#181c26", grid: "#282e3c", path: "#463c30", buildHint: "#2e4636",
+  hudBg: "#10121a", white: "#ebeef5", grey: "#969ca8",
+  red: "#dc4646", green: "#5ac878", yellow: "#f0d25a",
+};
+
+// The path enemies walk (grid waypoints).
+const WAYPOINTS = [
+  [-1, 2], [3, 2], [3, 6], [7, 6], [7, 2], [11, 2], [11, 7], [15, 7],
+];
+
+function cellCenter(col, row) {
+  return [col * CELL + CELL / 2, row * CELL + CELL / 2];
+}
+
+// Expand waypoints into the set of cells the road covers (not buildable).
+const PATH_CELLS = (() => {
+  const s = new Set();
+  for (let i = 0; i < WAYPOINTS.length - 1; i++) {
+    let [c1, r1] = WAYPOINTS[i], [c2, r2] = WAYPOINTS[i + 1];
+    if (c1 === c2) {
+      const step = r2 >= r1 ? 1 : -1;
+      for (let r = r1; r !== r2 + step; r += step) s.add(c1 + "," + r);
+    } else {
+      const step = c2 >= c1 ? 1 : -1;
+      for (let c = c1; c !== c2 + step; c += step) s.add(c + "," + r1);
+    }
+  }
+  return s;
+})();
+
+function isBuildable(col, row) {
+  if (col < 0 || col >= COLS || row < 0 || row >= ROWS) return false;
+  return !PATH_CELLS.has(col + "," + row);
+}
+
+function rgba(hexOrRgb, a) {
+  // accepts [r,g,b]; returns rgba string
+  const [r, g, b] = hexOrRgb;
+  return `rgba(${r},${g},${b},${a})`;
+}
+function rgb([r, g, b]) { return `rgb(${r},${g},${b})`; }
+
+// ===========================================================================
+//  ENTITIES  (mirrors entities.py)
+// ===========================================================================
+class Enemy {
+  constructor({ hp = 30, speed = 90, reward = 10, radius = 14, color = [220, 90, 90] } = {}) {
+    this.maxHp = hp; this.hp = hp;
+    this.speed = speed; this.reward = reward;
+    this.radius = radius; this.color = color;
+    this.slowFactor = 1.0; this.slowTimer = 0.0;
+    this.poisonDps = 0; this.poisonTimer = 0.0;
+    this.points = WAYPOINTS.map(([c, r]) => cellCenter(c, r));
+    this.targetIndex = 1;
+    [this.x, this.y] = this.points[0];
+    this.alive = true; this.reachedBase = false;
+  }
+  takeDamage(amount) {
+    this.hp -= amount;
+    if (this.hp <= 0) { this.hp = 0; this.alive = false; }
+  }
+  applySlow(factor, duration) {
+    this.slowFactor = Math.min(this.slowFactor, factor);
+    this.slowTimer = Math.max(this.slowTimer, duration);
+  }
+  applyPoison(dps, duration) {
+    this.poisonDps = Math.max(this.poisonDps, dps);
+    this.poisonTimer = Math.max(this.poisonTimer, duration);
+  }
+  update(dt) {
+    if (this.targetIndex >= this.points.length) { this.reachedBase = true; return; }
+    if (this.poisonTimer > 0) {
+      this.poisonTimer -= dt;
+      this.takeDamage(this.poisonDps * dt);
+      if (!this.alive) return;
+    }
+    let speed = this.speed;
+    if (this.slowTimer > 0) { this.slowTimer -= dt; speed *= this.slowFactor; }
+    else { this.slowFactor = 1.0; }
+    const [tx, ty] = this.points[this.targetIndex];
+    const dx = tx - this.x, dy = ty - this.y;
+    const dist = Math.hypot(dx, dy), step = speed * dt;
+    if (dist <= step) { this.x = tx; this.y = ty; this.targetIndex++; }
+    else { this.x += dx / dist * step; this.y += dy / dist * step; }
+  }
+}
+
+class Effect {
+  constructor(kind, life, data) { this.kind = kind; this.life = life; this.data = data; }
+  update(dt) { this.life -= dt; }
+  get alive() { return this.life > 0; }
+}
+
+// ===========================================================================
+//  TOWERS  (mirrors towers.py + my_towers.py)
+//  An object is DATA (attributes) + BEHAVIOR (methods). Setting an attribute
+//  like `splash` changes what the shared attack() method does.
+// ===========================================================================
+class Tower {
+  constructor(col, row) {
+    // defaults (overridden by subclasses via the `defaults` getter)
+    Object.assign(this, this.constructor.defaults);
+    this.col = col; this.row = row;
+    this.x = col * CELL + CELL / 2;
+    this.y = row * CELL + CELL / 2;
+    this.cooldown = 0.0;
+    this.kills = 0;
+    this.log = [];                // code the student ran on this object
+    this.invested = 0;            // total $ spent (used for sell refunds)
+  }
+  static get defaults() {
+    return {
+      name: "Tower", color: [120, 160, 220], cost: 100,
+      range: 150, damage: 10, fire_rate: 1.0,
+      splash: 0, slow: 0, chain: 0, poison: 0, crit: 0, bounty: 0,
+    };
+  }
+  inRange(e) { return Math.hypot(e.x - this.x, e.y - this.y) <= this.range; }
+
+  findTarget(enemies) {
+    let target = null, best = this.range + 1;
+    for (const e of enemies) {
+      if (!e.alive) continue;
+      const d = Math.hypot(e.x - this.x, e.y - this.y);
+      if (d <= this.range && d < best) { best = d; target = e; }
+    }
+    return target;
+  }
+  _hit(e, effects, source = null) {
+    let dmg = this.damage;
+    if (this.crit && Math.random() < this.crit) dmg *= 2;   // critical hit
+    e.takeDamage(dmg);
+    if (this.slow) e.applySlow(this.slow, 1.5);
+    if (this.poison) e.applyPoison(this.poison, 3);
+    const start = source || [this.x, this.y];
+    effects.push(new Effect("laser", 0.12, { start, end: [e.x, e.y], color: this.color }));
+    if (!e.alive) {
+      this.kills++;
+      if (this.bounty) e.reward += this.bounty;             // bonus money per kill
+    }
+  }
+  attack(enemy, enemies, effects) {
+    this._hit(enemy, effects);
+    if (this.splash) {
+      effects.push(new Effect("blast", 0.25, { x: enemy.x, y: enemy.y, radius: this.splash, color: this.color }));
+      for (const o of enemies) {
+        if (o === enemy || !o.alive) continue;
+        if (Math.hypot(o.x - enemy.x, o.y - enemy.y) <= this.splash)
+          this._hit(o, effects, [enemy.x, enemy.y]);
+      }
+    }
+    if (this.chain) {
+      const others = enemies.filter(e => e !== enemy && e.alive)
+        .sort((a, b) => Math.hypot(a.x - enemy.x, a.y - enemy.y) - Math.hypot(b.x - enemy.x, b.y - enemy.y));
+      for (const o of others.slice(0, this.chain)) this._hit(o, effects, [enemy.x, enemy.y]);
+    }
+  }
+  update(dt, enemies, effects) {
+    if (this.cooldown > 0) { this.cooldown -= dt; return; }
+    const target = this.findTarget(enemies);
+    if (target) { this.attack(target, enemies, effects); this.cooldown = 1.0 / this.fire_rate; }
+  }
+
+  // ---- Upgrade methods: BEHAVIOR the student calls on the object ----------
+  upgrade_damage(n = 1)    { this.damage += 6 * n; }
+  upgrade_range(n = 1)     { this.range += 40 * n; }
+  upgrade_fire_rate(n = 1) { this.fire_rate = +(this.fire_rate + 0.4 * n).toFixed(2); }
+  add_splash()             { this.splash = 60; }
+  add_slow()               { this.slow = 0.5; }
+  add_chain()              { this.chain = 2; }
+  add_poison()             { this.poison = 6; }
+  add_crit()               { this.crit = 0.25; }
+  add_bounty()             { this.bounty = 3; }
+  describe() {
+    return `${this.name_id} = ${this.constructor.name}(damage=${this.damage}, `
+      + `range=${this.range}, fire_rate=${this.fire_rate}, splash=${this.splash}, `
+      + `slow=${this.slow}, chain=${this.chain}, poison=${this.poison}, `
+      + `crit=${this.crit}, bounty=${this.bounty}, kills=${this.kills})`;
+  }
+}
+
+// The only pre-made tower: a simple, reliable example students read and copy.
+// Everything more interesting (splash, freeze, chain, ...) they DESIGN themselves.
+class BasicTower extends Tower {
+  static get defaults() {
+    return { ...Tower.defaults, name: "Basic", color: [110, 200, 255],
+      cost: 80, range: 160, damage: 8, fire_rate: 2.5 };
+  }
+}
+
+const BASE_TYPES = [BasicTower];
+let TOWER_TYPES = [...BASE_TYPES];   // BasicTower + any player-designed towers
+
+// ===========================================================================
+//  TOWER DESIGNER  -- the player writes their own Tower subclass in code.
+// ===========================================================================
+const BUDGET = 130;                         // starting "power" budget
+const BUDGET_STEP = 20;                      // +budget each redesign milestone
+let currentBudget = BUDGET;                  // grows over the game
+const DEFAULT_CAPS = { damage: 20, range: 180, fire_rate: 1.5 };
+const ABILITIES = {
+  high_damage:       { label: "High damage",       kind: "stat", stat: "damage",    cap: 60 },
+  long_range:        { label: "Long range",        kind: "stat", stat: "range",     cap: 360 },
+  high_attack_speed: { label: "High attack speed", kind: "stat", stat: "fire_rate", cap: 4.0 },
+  splash:            { label: "Splash damage",     kind: "mod",  attr: "splash", min: 40,  max: 100 },
+  freeze:            { label: "Freeze (slow)",     kind: "mod",  attr: "slow",   min: 0.3, max: 0.7 },
+  chain:             { label: "Chain hits",        kind: "mod",  attr: "chain",  min: 1,   max: 3 },
+  poison:            { label: "Poison (DoT)",      kind: "mod",  attr: "poison", min: 3,   max: 12 },
+  crit:              { label: "Critical hits",     kind: "mod",  attr: "crit",   min: 0.1, max: 0.5 },
+  bounty:            { label: "Bounty (money)",    kind: "mod",  attr: "bounty", min: 1,   max: 6 },
+};
+const MOD_ATTRS = Object.values(ABILITIES).filter(a => a.kind === "mod").map(a => a.attr);
+
+// A rough "power" score so strong towers must sacrifice elsewhere.
+function scoreOf(d) {
+  let s = d.damage * 1 + d.range * 0.2 + d.fire_rate * 20;
+  if (d.splash) s += 40 + d.splash * 0.3;
+  if (d.slow)   s += 60;
+  if (d.chain)  s += d.chain * 40;
+  if (d.poison) s += d.poison * 6;
+  if (d.crit)   s += d.crit * 120;
+  if (d.bounty) s += d.bounty * 8;
+  return s;
+}
+function capFor(stat, chosen) {
+  for (const k of chosen) {
+    const ab = ABILITIES[k];
+    if (ab.kind === "stat" && ab.stat === stat) return ab.cap;
+  }
+  return DEFAULT_CAPS[stat];
+}
+
+// Parse the student's class code -> {name, attrs} or {error}.
+function parseClass(code) {
+  const cm = code.match(/class\s+([A-Za-z_]\w*)\s*(?:\([^)]*\))?\s*:/);
+  if (!cm) return { error: "Start with a class, e.g.  class MyTower(Tower):" };
+  if (!/def\s+__init__\s*\(\s*self\b[^)]*\)\s*:/.test(code))
+    return { error: "Add an initializer:  def __init__(self):" };
+  const attrs = {};
+  const re = /self\.([A-Za-z_]\w*)\s*=\s*(-?\d+(?:\.\d+)?)/g;
+  let m;
+  while ((m = re.exec(code))) attrs[m[1]] = Number(m[2]);
+  return { name: cm[1], attrs };
+}
+
+function validateDesign(code, chosen) {
+  const errs = [];
+  if (chosen.length < 1 || chosen.length > 2) errs.push("Choose 1 or 2 abilities.");
+  const parsed = parseClass(code);
+  if (parsed.error) return { ok: false, errors: [parsed.error] };
+  const a = parsed.attrs;
+  for (const s of ["damage", "range", "fire_rate"])
+    if (!(s in a)) errs.push(`Set self.${s} = <number> in __init__.`);
+
+  const chosenMods = chosen.filter(k => ABILITIES[k].kind === "mod").map(k => ABILITIES[k].attr);
+  for (const k of chosen) {
+    const ab = ABILITIES[k];
+    if (ab.kind !== "mod") continue;
+    const v = a[ab.attr];
+    if (!v) errs.push(`You chose ${ab.label}: set self.${ab.attr} in __init__.`);
+    else if (v < ab.min || v > ab.max) errs.push(`self.${ab.attr} must be between ${ab.min} and ${ab.max}.`);
+    else if (ab.attr === "chain" && !Number.isInteger(v)) errs.push("self.chain must be a whole number.");
+  }
+  for (const mod of MOD_ATTRS)
+    if (a[mod] && !chosenMods.includes(mod))
+      errs.push(`self.${mod} is only allowed if you pick that ability.`);
+
+  for (const s of ["damage", "range", "fire_rate"]) {
+    if (!(s in a)) continue;
+    if (a[s] <= 0) errs.push(`self.${s} must be positive.`);
+    const cap = capFor(s, chosen);
+    if (a[s] > cap) errs.push(`self.${s} is too high (max ${cap}${cap === DEFAULT_CAPS[s] ? "; pick the matching focus to raise it" : ""}).`);
+  }
+  if (errs.length) return { ok: false, errors: errs };
+
+  const defaults = {
+    name: parsed.name, color: [90, 220, 200],
+    damage: a.damage, range: a.range, fire_rate: a.fire_rate,
+    splash: a.splash || 0, slow: a.slow || 0, chain: a.chain || 0,
+    poison: a.poison || 0, crit: a.crit || 0, bounty: a.bounty || 0,
+  };
+  const score = scoreOf(defaults);
+  if (score > currentBudget)
+    return { ok: false, errors: [`Over budget: ${Math.round(score)}/${currentBudget} power. Lower some stats.`] };
+  // Price designed towers at ~the same value-per-power as BasicTower (0.89 $/pwr)
+  // so building your OWN tower is worthwhile, not a penalty.
+  defaults.cost = Math.max(50, Math.round(score * 0.9));
+  return { ok: true, defaults, className: parsed.name, score };
+}
+
+// Turn validated stats into a real Tower subclass with the student's class name.
+function makeTowerType(className, defaults) {
+  const cls = class extends Tower { static get defaults() { return defaults; } };
+  try { Object.defineProperty(cls, "name", { value: className }); } catch (e) { /* ignore */ }
+  return cls;
+}
+
+// ===========================================================================
+//  UPGRADES  (mirrors upgrades.py) -- each shows the Python it represents.
+// ===========================================================================
+// Attributes the student can READ with print(name.attr).
+const ATTRS = ["damage", "range", "fire_rate", "splash", "slow", "chain",
+               "poison", "crit", "bounty", "kills"];
+
+// The upgrade "API": methods the student can CALL on a tower object.
+// Repeatable upgrades have a cap so towers can't scale forever.
+const METHODS = {
+  upgrade_damage:    { cost: 40,  repeatable: true, attr: "damage",    step: 6,   cap: 120, desc: "+6 damage" },
+  upgrade_range:     { cost: 35,  repeatable: true, attr: "range",     step: 40,  cap: 400, desc: "+40 range" },
+  upgrade_fire_rate: { cost: 50,  repeatable: true, attr: "fire_rate", step: 0.4, cap: 5.0, desc: "+0.4 fire rate" },
+  add_splash:        { cost: 150, oneTime: true, attr: "splash", desc: "splash damage" },
+  add_slow:          { cost: 130, oneTime: true, attr: "slow",   desc: "frost / slow" },
+  add_chain:         { cost: 170, oneTime: true, attr: "chain",  desc: "chain hits" },
+  add_poison:        { cost: 140, oneTime: true, attr: "poison", desc: "poison (damage over time)" },
+  add_crit:          { cost: 120, oneTime: true, attr: "crit",   desc: "critical hits" },
+  add_bounty:        { cost: 100, oneTime: true, attr: "bounty", desc: "bonus money per kill" },
+};
+
+// Parse "name.method(args)" -> {name, method, args:[numbers]} or {error} or null.
+function parseCall(str) {
+  const m = String(str).trim().match(/^([A-Za-z_]\w*)\s*\.\s*([A-Za-z_]\w*)\s*\(\s*(.*?)\s*\)$/);
+  if (!m) return null;
+  const argstr = m[3].trim();
+  let args = [];
+  if (argstr) {
+    args = argstr.split(",").map(s => Number(s.trim()));
+    if (args.some(a => Number.isNaN(a))) return { error: "Arguments must be numbers." };
+  }
+  return { name: m[1], method: m[2], args };
+}
+
+// ===========================================================================
+//  WAVES  (mirrors waves.py)
+// ===========================================================================
+const WIN_WAVE = 15;          // survive this many waves to win
+const REDESIGN_EVERY = 5;     // let the player design a new tower every N waves
+
+// Endless, scaling waves so the redesign milestones are reachable.
+function generateWave(n) {
+  const hp = Math.round(20 + n * 8 + n * n * 0.6);
+  const count = 6 + n;
+  const speed = 80 + n * 4;
+  const reward = 6 + Math.floor(n / 2);
+  const groups = [{ count, gap: Math.max(0.35, 0.9 - n * 0.03),
+                    hp, speed, reward, color: [220, 90, 90] }];
+  if (n % 3 === 0)                       // periodic tanks
+    groups.push({ count: 1 + Math.floor(n / 3), gap: 1.5,
+                  hp: hp * 4, speed: speed * 0.6, reward: reward * 3, color: [150, 80, 200] });
+  if (n >= 5 && n % 5 !== 0)             // fast swarm
+    groups.push({ count: 8 + n, gap: 0.3, hp: Math.round(hp * 0.6),
+                  speed: speed * 1.6, reward: Math.max(3, reward - 2), color: [240, 200, 90] });
+  return groups;
+}
+
+// ===========================================================================
+//  GAME  (mirrors main.py)
+// ===========================================================================
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+class Game {
+  constructor() { this.reset(); }
+  reset() {
+    TOWER_TYPES = [...BASE_TYPES];   // drop any player-designed towers
+    this.baseHp = BASE_HP;
+    this.money = START_MONEY;
+    this.towers = [];
+    this.enemies = [];
+    this.effects = [];
+    this.selected = 0;              // index into TOWER_TYPES
+    this.selectedTower = null;      // the tower object being programmed
+    this.pendingPlacement = null;   // {cls, col, row} awaiting a typed name
+    this.upgradeRows = [];
+    this.mouse = { x: 0, y: 0 };
+    this.waveIndex = -1;
+    this.spawning = false;
+    this.waveInProgress = false;
+    this.spawnQueue = [];
+    this.spawnTimer = 0;
+    this.message = "Press SPACE to start Wave 1";
+    this.gameOver = false; this.won = false;
+    currentBudget = BUDGET;         // reset the design budget
+  }
+  get buildPhase() {
+    return !this.spawning && this.enemies.length === 0 && !this.gameOver;
+  }
+
+  // -- waves ----------------------------------------------------------------
+  startNextWave() {
+    if (this.spawning || this.gameOver) return;
+    this.waveIndex++;
+    const n = this.waveIndex + 1;
+    if (n > WIN_WAVE) return;
+    this.spawning = true;
+    this.waveInProgress = true;
+    this.spawnQueue = [];
+    let t = 0;
+    for (const g of generateWave(n)) {
+      for (let i = 0; i < g.count; i++) {
+        this.spawnQueue.push([t, { hp: g.hp, speed: g.speed, reward: g.reward, color: g.color }]);
+        t += g.gap;
+      }
+    }
+    this.spawnTimer = 0;
+    this.message = `Wave ${n} incoming!`;
+    this.selectedTower = null;
+    hideBar();
+  }
+  doSpawns(dt) {
+    if (!this.spawning) return;
+    this.spawnTimer += dt;
+    this.spawnQueue = this.spawnQueue.filter(([time, kw]) => {
+      if (time <= this.spawnTimer) { this.enemies.push(new Enemy(kw)); return false; }
+      return true;
+    });
+    if (this.spawnQueue.length === 0) this.spawning = false;
+  }
+
+  // -- input ----------------------------------------------------------------
+  onKey(e) {
+    if (tutorialOpen) return;
+    if ((e.key === "h" || e.key === "H") && !designOpen && !this.gameOver) { showTutorial(false); return; }
+    if (designOpen) return;
+    if (e.key === "Escape") { this.selectedTower = null; this.pendingPlacement = null; hideBar(); }
+    else if (e.key === " " || e.code === "Space") {
+      e.preventDefault();
+      if (this.gameOver) { this.reset(); openDesign(); } else this.startNextWave();
+    } else if (e.key >= "1" && e.key <= "9") {
+      const idx = +e.key - 1;
+      if (idx < TOWER_TYPES.length) this.selected = idx;
+    }
+  }
+  onClick(px, py) {
+    if (this.gameOver) return;
+    if (this.pendingPlacement) return;         // finish naming first (Enter/Esc)
+    if (py >= PLAY_H) return;                   // HUD area
+    if (this.selectedTower && px >= this.panelX()) return;  // panel background
+    const col = Math.floor(px / CELL), row = Math.floor(py / CELL);
+    for (const t of this.towers)
+      if (t.col === col && t.row === row) { this.openProgramming(t); return; }
+    this.selectedTower = null; hideBar();
+    this.requestPlacement(col, row);
+  }
+
+  openProgramming(t) {
+    this.selectedTower = t;
+    this.message = `Programming ${t.name_id}`;
+    showBar("upgrade", `Program ${t.name_id} \u2014 e.g.  ${t.name_id}.upgrade_damage()  or  print(${t.name_id})`);
+  }
+
+  suggestName(Cls) {
+    const base = Cls.defaults.name.toLowerCase();
+    let n = 1;
+    while (this.towers.some(t => t.name_id === base + n)) n++;
+    return base + n;
+  }
+
+  requestPlacement(col, row) {
+    if (!isBuildable(col, row)) { this.message = "Can't build on the path!"; return; }
+    if (this.towers.some(t => t.col === col && t.row === row)) { this.message = "A tower is already there!"; return; }
+    const Cls = TOWER_TYPES[this.selected];
+    const cost = Cls.defaults.cost;
+    if (this.money < cost) { this.message = `Need $${cost} for a ${Cls.defaults.name}!`; return; }
+    this.pendingPlacement = { cls: Cls, col, row };
+    const s = this.suggestName(Cls);
+    showBar("name", `Name your ${Cls.defaults.name} (e.g. ${s}), then Enter:`, s);
+  }
+
+  // Called when the player types a name and presses Enter.
+  finishPlacement(name) {
+    const p = this.pendingPlacement;
+    if (!p) return;
+    name = (name || "").trim();
+    if (!/^[A-Za-z_]\w*$/.test(name)) {
+      this.message = "Invalid name. Use letters/digits/_ and start with a letter or _.";
+      return;
+    }
+    if (name.length > 12) { this.message = "Name too long (max 12 characters)."; return; }
+    if (this.towers.some(t => t.name_id === name)) {
+      this.message = `The name '${name}' is already used.`; return;
+    }
+    const t = new p.cls(p.col, p.row);           // build an OBJECT from a CLASS
+    t.name_id = name;                             // give the object its own name
+    t.invested = p.cls.defaults.cost;             // track spend for refunds
+    this.towers.push(t);
+    this.money -= p.cls.defaults.cost;
+    this.pendingPlacement = null;
+    this.selectedTower = t;
+    this.message = `Placed ${name}! Program it by calling methods.`;
+    showBar("upgrade", `Program ${name} \u2014 e.g.  ${name}.upgrade_damage()  or  print(${name})`);
+  }
+
+  // Run one or more statements typed by the player. Statements are separated
+  // by ';' or newlines, so you can chain several in one line.
+  runStatements(text) {
+    const parts = String(text).split(/[;\n]+/).map(s => s.trim()).filter(Boolean);
+    if (!parts.length) { this.message = "Type a statement, e.g.  archer1.upgrade_damage()"; return; }
+    const results = [];
+    for (const stmt of parts) results.push(this.runOne(stmt));
+    this.message = results.join("     ");
+  }
+
+  runOne(stmt) {
+    const pr = stmt.match(/^print\s*\(\s*([A-Za-z_]\w*)\s*(?:\.\s*([A-Za-z_]\w*))?\s*\)$/);
+    if (pr) return this.handleRead(pr[1], pr[2]);
+    const call = parseCall(stmt);
+    if (call && call.error) return call.error;
+    if (call) return this.handleCall(call);
+    if (/^[A-Za-z_]\w*\s*\.\s*\w+\s*(\+=|-=|=)/.test(stmt))
+      return "Upgrades are methods now \u2014 try e.g.  name.upgrade_damage()";
+    return "Syntax error. Try  name.method()  or  print(name).";
+  }
+
+  // print(name) or print(name.attr) -- read state, no cost, any placed tower.
+  handleRead(name, attr) {
+    const t = this.towers.find(x => x.name_id === name);
+    if (!t) return `No tower named '${name}'.`;
+    if (!attr) return t.describe();
+    if (!ATTRS.includes(attr)) return `Can't read '${attr}'. Try: ${ATTRS.join(", ")}.`;
+    return `${name}.${attr} = ${t[attr]}`;
+  }
+
+  // name.method(args) -- call a method on the SELECTED tower object.
+  handleCall(call) {
+    const t = this.selectedTower;
+    if (!t) return "Select a tower first.";
+    if (call.name !== t.name_id) return `This tower is named '${t.name_id}', not '${call.name}'.`;
+    if (!this.buildPhase) return "Finish the wave before reprogramming towers!";
+    if (call.method === "sell") {
+      if (call.args.length) return "sell() takes no arguments.";
+      return this.sellTower(t);
+    }
+    const spec = METHODS[call.method];
+    if (!spec)
+      return `${t.name_id} has no method '${call.method}'. Try: ${Object.keys(METHODS).join(", ")}, sell.`;
+
+    let n = 1;
+    if (spec.repeatable) {
+      if (call.args.length) {
+        n = call.args[0];
+        if (!Number.isInteger(n) || n < 1) return `${call.method}(n) needs a whole number n >= 1.`;
+      }
+    } else if (call.args.length) {
+      return `${call.method}() takes no arguments.`;
+    }
+    if (spec.oneTime && t[spec.attr]) return `${t.name_id} already has ${spec.desc}.`;
+    if (spec.repeatable && spec.cap !== undefined) {
+      const projected = t[spec.attr] + spec.step * n;
+      if (projected > spec.cap + 1e-9)
+        return `${t.name_id}.${spec.attr} is capped at ${spec.cap} (currently ${t[spec.attr]}).`;
+    }
+    const total = spec.cost * n;
+    if (this.money < total)
+      return `Need $${total} for ${call.method}(${n > 1 ? n : ""}).`;
+
+    this.money -= total;
+    t.invested += total;
+    t[call.method](n);                        // <-- actually call the method
+    const line = `${t.name_id}.${call.method}(${n > 1 ? n : ""})`;
+    t.log.push(line);
+    return `Ran ${line}${n > 1 ? `  ($${spec.cost} x ${n} = $${total})` : ""}`;
+  }
+
+  sellTower(t) {
+    const refund = Math.floor(t.invested * 0.7);
+    this.money += refund;
+    this.towers = this.towers.filter(x => x !== t);
+    this.selectedTower = null;
+    hideBar();
+    return `Sold ${t.name_id} for $${refund} (70% refund).`;
+  }
+
+  // -- update ---------------------------------------------------------------
+  update(dt) {
+    if (this.gameOver) return;
+    this.doSpawns(dt);
+    for (const t of this.towers) t.update(dt, this.enemies, this.effects);
+    for (const e of this.enemies) {
+      e.update(dt);
+      if (e.reachedBase) { this.baseHp -= 1; e.alive = false; }
+    }
+    const survivors = [];
+    for (const e of this.enemies) {
+      if (e.alive) survivors.push(e);
+      else if (!e.reachedBase) this.money += e.reward;
+    }
+    this.enemies = survivors;
+    for (const f of this.effects) f.update(dt);
+    this.effects = this.effects.filter(f => f.alive);
+
+    if (this.baseHp <= 0) {
+      this.baseHp = 0; this.gameOver = true; this.won = false;
+      this.message = "Your base fell! Press SPACE to retry.";
+    } else if (this.waveInProgress && !this.spawning && this.enemies.length === 0) {
+      this.waveInProgress = false;
+      this.onWaveComplete(this.waveIndex + 1);
+    }
+  }
+
+  onWaveComplete(n) {
+    if (n >= WIN_WAVE) {
+      this.gameOver = true; this.won = true;
+      this.message = `You survived all ${WIN_WAVE} waves! Press SPACE to replay.`;
+      return;
+    }
+    if (n % REDESIGN_EVERY === 0) {
+      currentBudget += BUDGET_STEP;              // reward: a stronger design
+      this.message = `Wave ${n} cleared! Design a new tower (budget ${currentBudget}).`;
+      openDesign(true);                          // milestone: skippable
+    } else {
+      this.message = `Wave ${n} cleared! Press SPACE for wave ${n + 1}.`;
+    }
+  }
+
+  // -- drawing --------------------------------------------------------------
+  panelX() { return PLAY_W - 330; }
+  text(s, x, y, color, size = 20, bold = false) {
+    ctx.font = `${bold ? "bold " : ""}${size}px Consolas, monospace`;
+    ctx.fillStyle = color; ctx.textBaseline = "top";
+    ctx.fillText(s, x, y);
+  }
+  draw() {
+    ctx.clearRect(0, 0, WIDTH, HEIGHT);
+    ctx.fillStyle = COL.bg; ctx.fillRect(0, 0, WIDTH, PLAY_H);
+    this.drawGrid();
+    this.drawPath();
+    this.drawRangePreview();
+    for (const t of this.towers) this.drawTower(t);
+    for (const e of this.enemies) this.drawEnemy(e);
+    for (const f of this.effects) this.drawEffect(f);
+    if (this.selectedTower) { this.drawSelectedRing(); this.drawPanel(); }
+    else this.upgradeRows = [];
+    this.drawHud();
+    if (this.gameOver) this.drawBanner();
+  }
+  drawGrid() {
+    ctx.strokeStyle = COL.grid; ctx.lineWidth = 1;
+    for (let c = 0; c <= COLS; c++) { ctx.beginPath(); ctx.moveTo(c * CELL, 0); ctx.lineTo(c * CELL, PLAY_H); ctx.stroke(); }
+    for (let r = 0; r <= ROWS; r++) { ctx.beginPath(); ctx.moveTo(0, r * CELL); ctx.lineTo(PLAY_W, r * CELL); ctx.stroke(); }
+    ctx.strokeStyle = COL.buildHint;
+    for (let c = 0; c < COLS; c++) for (let r = 0; r < ROWS; r++)
+      if (isBuildable(c, r)) ctx.strokeRect(c * CELL + 1.5, r * CELL + 1.5, CELL - 3, CELL - 3);
+  }
+  drawPath() {
+    ctx.strokeStyle = COL.path; ctx.lineWidth = CELL - 8;
+    ctx.lineJoin = "round"; ctx.lineCap = "round";
+    ctx.beginPath();
+    WAYPOINTS.forEach(([c, r], i) => {
+      const [x, y] = cellCenter(c, r);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+    const [bx, by] = cellCenter(...WAYPOINTS[WAYPOINTS.length - 1]);
+    ctx.fillStyle = COL.green;
+    ctx.fillRect(bx - 18, by - 18, 36, 36);
+  }
+  drawRangePreview() {
+    const { x: mx, y: my } = this.mouse;
+    if (my >= PLAY_H || this.selectedTower) return;
+    const col = Math.floor(mx / CELL), row = Math.floor(my / CELL);
+    if (!isBuildable(col, row)) return;
+    const cls = TOWER_TYPES[this.selected].defaults;
+    const [cx, cy] = cellCenter(col, row);
+    ctx.beginPath(); ctx.arc(cx, cy, cls.range, 0, Math.PI * 2);
+    ctx.fillStyle = rgba(cls.color, 0.16); ctx.fill();
+    ctx.strokeStyle = rgba(cls.color, 0.5); ctx.lineWidth = 2; ctx.stroke();
+  }
+  drawTower(t) {
+    ctx.beginPath(); ctx.arc(t.x, t.y, 18, 0, Math.PI * 2);
+    ctx.fillStyle = rgb(t.color); ctx.fill();
+    ctx.strokeStyle = COL.white; ctx.lineWidth = 2; ctx.stroke();
+    if (t.name_id) {
+      ctx.textAlign = "center";
+      this.text(t.name_id, t.x, t.y + 20, COL.white, 12);
+      ctx.textAlign = "left";
+    }
+  }
+  drawEnemy(e) {
+    ctx.beginPath(); ctx.arc(e.x, e.y, e.radius, 0, Math.PI * 2);
+    ctx.fillStyle = rgb(e.color); ctx.fill();
+    const w = e.radius * 2, frac = e.hp / e.maxHp;
+    const bx = e.x - e.radius, by = e.y - e.radius - 8;
+    ctx.fillStyle = COL.red; ctx.fillRect(bx, by, w, 4);
+    ctx.fillStyle = COL.green; ctx.fillRect(bx, by, w * frac, 4);
+  }
+  drawEffect(f) {
+    if (f.kind === "laser") {
+      ctx.strokeStyle = rgb(f.data.color); ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(...f.data.start); ctx.lineTo(...f.data.end); ctx.stroke();
+    } else if (f.kind === "blast") {
+      const a = Math.max(0, 0.7 * (f.life / 0.25));
+      ctx.beginPath(); ctx.arc(f.data.x, f.data.y, f.data.radius, 0, Math.PI * 2);
+      ctx.fillStyle = rgba(f.data.color, a); ctx.fill();
+    }
+  }
+  drawSelectedRing() {
+    const t = this.selectedTower;
+    ctx.beginPath(); ctx.arc(t.x, t.y, 24, 0, Math.PI * 2);
+    ctx.strokeStyle = COL.yellow; ctx.lineWidth = 3; ctx.stroke();
+    ctx.beginPath(); ctx.arc(t.x, t.y, t.range, 0, Math.PI * 2);
+    ctx.fillStyle = rgba(t.color, 0.12); ctx.fill();
+    ctx.strokeStyle = rgba(t.color, 0.45); ctx.lineWidth = 2; ctx.stroke();
+  }
+  drawPanel() {
+    const t = this.selectedTower;
+    const px = this.panelX(), pw = 330;
+    ctx.fillStyle = "rgba(12,14,22,0.92)"; ctx.fillRect(px, 0, pw, PLAY_H);
+    ctx.strokeStyle = COL.grid; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(px, 0); ctx.lineTo(px, PLAY_H); ctx.stroke();
+
+    let x = px + 16, y = 14;
+    this.text(t.name_id, x, y, COL.yellow, 22, true); y += 26;
+    this.text(`(instance of ${t.constructor.name})`, x, y, COL.grey, 15); y += 26;
+
+    this.text(this.buildPhase ? "CALL A METHOD (input below game):"
+                              : "METHODS (locked during wave)", x, y, COL.grey, 15); y += 24;
+    for (const [mName, spec] of Object.entries(METHODS)) {
+      if (spec.oneTime && t[spec.attr]) continue;
+      const afford = this.money >= spec.cost && this.buildPhase;
+      this.text(`${t.name_id}.${mName}()`, x, y, afford ? COL.white : COL.grey, 13);
+      this.text(`$${spec.cost}`, px + pw - 50, y, afford ? COL.yellow : COL.grey, 13);
+      y += 20;
+    }
+    const refund = Math.floor(t.invested * 0.7);
+    this.text(`${t.name_id}.sell()`, x, y, COL.white, 15);
+    this.text(`+$${refund}`, px + pw - 64, y, COL.green, 15); y += 26;
+
+    this.text("bulk:   upgrade_damage(3)", x, y, COL.grey, 14); y += 18;
+    this.text(`stats:  print(${t.name_id})`, x, y, COL.grey, 14); y += 24;
+
+    this.text("CODE LOG", x, y, COL.grey, 16); y += 22;
+    if (t.log.length) {
+      for (const c of t.log.slice(-6)) { this.text("  " + c, x, y, COL.green, 14); y += 18; }
+    } else {
+      this.text("  (nothing yet \u2014 call a method!)", x, y, COL.grey, 14); y += 18;
+    }
+    this.text("[ESC] close", x, PLAY_H - 26, COL.grey, 16);
+  }
+  drawHud() {
+    ctx.fillStyle = COL.hudBg; ctx.fillRect(0, PLAY_H, WIDTH, HUD_H);
+    const waveTxt = `Wave ${Math.max(0, this.waveIndex + 1)}/${WIN_WAVE}`;
+    this.text(`$ ${this.money}`, 12, PLAY_H + 10, COL.yellow, 16);
+    this.text(`Base HP: ${this.baseHp}`, 12, PLAY_H + 40, COL.green, 16);
+    this.text(waveTxt, 140, PLAY_H + 10, COL.white, 16);
+
+    let x = 250;
+    const gap = Math.min(150, (WIDTH - x - 12) / TOWER_TYPES.length);
+    TOWER_TYPES.forEach((Cls, i) => {
+      const d = Cls.defaults;
+      const color = i === this.selected ? COL.white : COL.grey;
+      this.text(`[${i + 1}] ${d.name} $${d.cost}`, x, PLAY_H + 10, color, 14);
+      if (i === this.selected)
+        this.text(`dmg ${d.damage} rate ${d.fire_rate} rng ${d.range}`, x, PLAY_H + 40, COL.grey, 12);
+      x += gap;
+    });
+    // The status message lives in the DOM (#status) below the canvas, so long
+    // messages never overlap the HUD.
+    if (statusEl && statusEl.textContent !== this.message) statusEl.textContent = this.message;
+  }
+  drawBanner() {
+    const txt = this.won ? "VICTORY!" : "GAME OVER";
+    ctx.fillStyle = "rgba(0,0,0,0.66)";
+    ctx.fillRect(WIDTH / 2 - 180, PLAY_H / 2 - 40, 360, 80);
+    ctx.textAlign = "center";
+    ctx.font = "bold 44px Consolas, monospace";
+    ctx.fillStyle = this.won ? COL.green : COL.red;
+    ctx.textBaseline = "middle";
+    ctx.fillText(txt, WIDTH / 2, PLAY_H / 2);
+    ctx.textAlign = "left"; ctx.textBaseline = "top";
+  }
+}
+
+// ===========================================================================
+//  BOOTSTRAP
+// ===========================================================================
+const game = new Game();
+
+// --- The typed-code input bar (naming towers + typing upgrades) -----------
+const bar = document.getElementById("bar");
+const barLabel = document.getElementById("barLabel");
+const barInput = document.getElementById("barInput");
+const barMsg = document.getElementById("barMsg");
+const statusEl = document.getElementById("status");
+let barMode = null;   // "name" | "upgrade" | null
+
+function showBar(mode, label, prefill = "") {
+  barMode = mode;
+  barLabel.textContent = label;
+  barInput.value = prefill;
+  barMsg.textContent = "";
+  bar.style.display = "flex";
+  barInput.focus(); barInput.select();
+}
+function hideBar() {
+  bar.style.display = "none";
+  barMode = null;
+  if (document.activeElement === barInput) barInput.blur();
+}
+
+barInput.addEventListener("keydown", e => {
+  e.stopPropagation();                 // don't let game hotkeys steal typing
+  if (e.key === "Enter") {
+    const v = barInput.value;
+    if (barMode === "name") game.finishPlacement(v);
+    else if (barMode === "upgrade") { game.runStatements(v); barInput.select(); }
+    barMsg.textContent = game.message;
+  } else if (e.key === "Escape") {
+    if (barMode === "name") game.pendingPlacement = null;
+    game.selectedTower = null;
+    hideBar();
+  }
+});
+
+// --- The concept tutorial overlay -----------------------------------------
+const TUTORIAL = [
+  { title: "Welcome \u2014 learn Python by defending your base",
+    body: "This is a tower-defense game where you write <b>real Python</b> to win. "
+        + "Along the way you'll learn the core ideas of <b>classes and objects</b> \u2014 "
+        + "often the hardest part of intro programming, made hands-on.<br><br>"
+        + "You'll: design tower <b>classes</b>, create <b>objects</b> from them, give them "
+        + "<b>names</b>, and call their <b>methods</b> to survive the waves." },
+  { title: "Classes are blueprints",
+    body: "A <b>class</b> is a blueprint describing what every tower of a type <i>has</i> "
+        + "and <i>does</i>. You'll write one like this:"
+        + "<pre>class MyTower(Tower):\n    def __init__(self):\n        self.damage = 20\n        self.range = 150\n        self.fire_rate = 1.0</pre>"
+        + "<b>__init__</b> runs once to set up a new tower's starting data. <b>self</b> means "
+        + "\"this particular tower.\" Each <code>self.x = ...</code> gives it an <b>attribute</b> (its data)." },
+  { title: "Objects are instances of a class",
+    body: "When you <b>place</b> a tower, you create an <b>object</b> (an \"instance\") from your class.<br><br>"
+        + "One class \u2192 many objects. Place three towers and you have three separate objects "
+        + "built from the same blueprint \u2014 each with its <i>own</i> data." },
+  { title: "Names point to specific objects",
+    body: "You'll <b>name</b> each tower, like <code>archer1</code>. That name is a variable that "
+        + "refers to that one object:"
+        + "<pre>archer1.damage      # the damage OF the archer1 object\nsniper2.range       # a different object's range</pre>"
+        + "Using the right name is how you act on the <i>specific</i> object you mean." },
+  { title: "Methods do things; attributes are things",
+    body: "Between waves, program a tower by <b>calling its methods</b>:"
+        + "<pre>archer1.upgrade_damage()\narcher1.upgrade_damage(3)   # bulk: pass an argument\narcher1.add_splash()</pre>"
+        + "<b>Methods</b> are behavior (verbs). <b>Attributes</b> are data (nouns). "
+        + "Calling a method changes the object's attributes." },
+  { title: "Inspect objects with print()",
+    body: "There's no stats menu \u2014 on purpose. To see an object's state, <b>print it</b>, "
+        + "just like a real programmer:"
+        + "<pre>print(archer1)          # the whole object\nprint(archer1.damage)   # one attribute</pre>"
+        + "Get in the habit: when unsure, <code>print</code> the object." },
+  { title: "You're ready!",
+    body: "Now design your first tower <b>class</b>. Pick 1\u20132 abilities, then write the class "
+        + "within the power budget.<br><br>Tip: press <b>H</b> anytime to reopen this guide. "
+        + "Have fun \u2014 and think like a programmer!" },
+];
+const tut = document.getElementById("tutorial");
+const tutTitle = document.getElementById("tutTitle");
+const tutBody = document.getElementById("tutBody");
+const tutStep = document.getElementById("tutStep");
+const tutBack = document.getElementById("tutBack");
+const tutNext = document.getElementById("tutNext");
+const tutSkip = document.getElementById("tutSkip");
+let tutorialOpen = false, tutIndex = 0, tutInitial = false;
+
+function renderTut() {
+  const s = TUTORIAL[tutIndex];
+  tutTitle.textContent = s.title;
+  tutBody.innerHTML = s.body;
+  tutStep.textContent = `Step ${tutIndex + 1} of ${TUTORIAL.length}`;
+  tutBack.disabled = tutIndex === 0;
+  tutNext.textContent = tutIndex === TUTORIAL.length - 1 ? "Start \u2192" : "Next";
+}
+function showTutorial(initial = false) {
+  tutInitial = initial; tutIndex = 0; tutorialOpen = true;
+  renderTut(); tut.style.display = "flex";
+}
+function hideTutorial() { tutorialOpen = false; tut.style.display = "none"; }
+function finishTutorial() {
+  hideTutorial();
+  if (tutInitial) { tutInitial = false; openDesign(false); }
+}
+tutNext.addEventListener("click", () => {
+  if (tutIndex < TUTORIAL.length - 1) { tutIndex++; renderTut(); } else finishTutorial();
+});
+tutBack.addEventListener("click", () => { if (tutIndex > 0) { tutIndex--; renderTut(); } });
+tutSkip.addEventListener("click", finishTutorial);
+
+// --- The tower designer overlay -------------------------------------------
+const design = document.getElementById("design");
+const codeEl = document.getElementById("code");
+const infoEl = document.getElementById("designInfo");
+const dmsgEl = document.getElementById("designMsg");
+const abilEl = document.getElementById("abilities");
+const buildBtn = document.getElementById("buildBtn");
+const skipBtn = document.getElementById("skipBtn");
+const designTitle = document.getElementById("designTitle");
+let designOpen = false;
+
+abilEl.innerHTML = Object.entries(ABILITIES).map(([k, ab]) => {
+  const d = ab.kind === "stat" ? `focus: ${ab.stat} cap \u2192 ${ab.cap}` : `modifier: adds ${ab.attr}`;
+  return `<label><input type="checkbox" class="abil" value="${k}">` +
+         `<span>${ab.label}<br><small>${d}</small></span></label>`;
+}).join("");
+
+function currentChosen() { return [...abilEl.querySelectorAll(".abil:checked")].map(b => b.value); }
+function refreshAbilityStates() {
+  const boxes = [...abilEl.querySelectorAll(".abil")];
+  const n = boxes.filter(b => b.checked).length;
+  boxes.forEach(b => { b.disabled = !b.checked && n >= 2; });
+}
+function updateInfo() {
+  const chosen = currentChosen();
+  const cD = capFor("damage", chosen), cR = capFor("range", chosen), cF = capFor("fire_rate", chosen);
+  const parsed = parseClass(codeEl.value);
+  let s = "power: ?";
+  if (!parsed.error) {
+    const a = parsed.attrs;
+    s = `power: ${Math.round(scoreOf({ damage: a.damage || 0, range: a.range || 0,
+      fire_rate: a.fire_rate || 0, splash: a.splash || 0, slow: a.slow || 0, chain: a.chain || 0,
+      poison: a.poison || 0, crit: a.crit || 0, bounty: a.bounty || 0 }))} / ${currentBudget}`;
+  }
+  infoEl.textContent = `${s}     caps: damage\u2264${cD}, range\u2264${cR}, fire_rate\u2264${cF}`;
+}
+abilEl.addEventListener("change", () => { refreshAbilityStates(); updateInfo(); });
+codeEl.addEventListener("input", updateInfo);
+codeEl.addEventListener("keydown", e => e.stopPropagation());
+buildBtn.addEventListener("click", () => {
+  const chosen = currentChosen();
+  const res = validateDesign(codeEl.value, chosen);
+  if (!res.ok) { dmsgEl.style.color = "#dc6b6b"; dmsgEl.textContent = res.errors.join("\n"); return; }
+  TOWER_TYPES.push(makeTowerType(res.className, res.defaults));
+  game.selected = TOWER_TYPES.length - 1;
+  hideDesign();
+  game.message = `Built ${res.className} ($${res.defaults.cost})! It's tower [${TOWER_TYPES.length}] \u2014 place it.`;
+});
+
+skipBtn.addEventListener("click", () => { hideDesign(); game.message = "Skipped the redesign."; });
+
+function openDesign(milestone = false) {
+  designOpen = true;
+  [...abilEl.querySelectorAll(".abil")].forEach(b => { b.checked = false; b.disabled = false; });
+  dmsgEl.textContent = "";
+  codeEl.value = "";
+  designTitle.textContent = milestone
+    ? `New tower unlocked! (budget ${currentBudget})`
+    : "Design your tower";
+  skipBtn.style.display = milestone ? "inline-block" : "none";
+  updateInfo();
+  design.style.display = "flex";
+}
+function hideDesign() { designOpen = false; design.style.display = "none"; }
+
+function canvasPos(evt) {
+  const r = canvas.getBoundingClientRect();
+  return {
+    x: (evt.clientX - r.left) * (canvas.width / r.width),
+    y: (evt.clientY - r.top) * (canvas.height / r.height),
+  };
+}
+canvas.addEventListener("mousemove", e => { game.mouse = canvasPos(e); });
+canvas.addEventListener("mousedown", e => {
+  if (e.button !== 0) return;
+  const p = canvasPos(e); game.onClick(p.x, p.y);
+});
+window.addEventListener("keydown", e => game.onKey(e));
+
+let last = performance.now();
+function loop(now) {
+  let dt = (now - last) / 1000; last = now;
+  if (dt > 0.1) dt = 0.1;                 // clamp after tab switches
+  game.update(dt);
+  game.draw();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+showTutorial(true);   // begin with the concept tutorial, then the designer
+</script>
+</body>
+</html>

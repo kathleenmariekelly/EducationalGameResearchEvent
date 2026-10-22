@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>terminal-dungeon</title>
+  <meta name="description" content="An educational game about exploring a Linux filesystem tree with ls and cd." />
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+</head>
+<body>
+  <div id="game-wrap">
+    <div id="game-container"></div>
+    <form id="cmd-form" autocomplete="off">
+      <span id="cmd-prompt">$</span>
+      <input id="cmd-input" type="text" spellcheck="false"
+             placeholder="type a command (try: help)  then press Enter" />
+    </form>
+  </div>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

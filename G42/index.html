@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Code Master — The Multi-Language CS Study Game</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <canvas id="matrix"></canvas>
+
+  <!-- Brightness / photosensitivity warning shown before the game -->
+  <div id="brightness-warning" class="warning-overlay">
+    <div class="warning-box">
+      <div class="warning-icon">⚠️</div>
+      <h2>Brightness &amp; Photosensitivity Warning</h2>
+      <p>This game has flashing lights, fast motion, and bright colors. Play in a well-lit room, keep a comfortable distance from the screen, and take regular breaks. If you feel dizzy, uncomfortable, or unwell, please stop playing.</p>
+      <p class="warning-sub">Consider lowering your screen brightness before you begin.</p>
+      <button class="btn btn-primary btn-big" id="warning-ok">I Understand — Continue</button>
+    </div>
+  </div>
+
+  <div id="app">
+    <!-- ============ START SCREEN ============ -->
+    <section id="screen-start" class="screen active">
+      <div class="start-card">
+        <div class="logo">
+          <span class="logo-brace">{</span>
+          <div class="logo-text">
+            <h1>Code <span class="accent">Master</span></h1>
+            <p class="tagline">The Multi-Language CS Study Game</p>
+          </div>
+          <span class="logo-brace">}</span>
+        </div>
+
+        <p class="blurb">
+          Master the concepts that show up on every CS exam — across
+          <strong>Python, C++, Java &amp; JavaScript</strong>. Memory, data
+          structures, Big-O, recursion, OOP and more. Study your way, beat the
+          clock, or blast blocks. Become a <strong>Code Master</strong>.
+        </p>
+
+        <div class="player-entry">
+          <input type="text" id="player-name" maxlength="16" autocomplete="off"
+                 placeholder="Enter a display name (optional)" />
+          <p class="player-hint" id="player-hint">Progress saves in this browser only — no email or password needed.</p>
+        </div>
+        <div class="start-actions">
+          <button class="btn btn-primary btn-big" id="btn-play">▶ Play &amp; Save</button>
+          <button class="btn btn-ghost" id="btn-guest">Play as Guest</button>
+        </div>
+
+        <div id="profile-list" class="profile-list"></div>
+
+        <p class="credit">Study-anytime test prep for coders of every level</p>
+      </div>
+    </section>
+
+    <!-- ============ CHARACTER CREATOR ============ -->
+    <section id="screen-creator" class="screen">
+      <div class="creator-wrap">
+        <h2 class="mode-heading">&gt; CREATE_YOUR_BALLER<span class="cursor">_</span></h2>
+        <div class="creator-main">
+          <div class="creator-stage">
+            <canvas id="avatar-canvas" width="200" height="280"></canvas>
+          </div>
+          <div class="creator-options" id="creator-options"></div>
+        </div>
+        <div class="creator-actions">
+          <button class="btn btn-ghost" id="creator-random">🎲 Randomize</button>
+          <button class="btn btn-primary btn-big" id="creator-done">Let's Play ▶</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ LANGUAGE SELECT SCREEN ============ -->
+    <section id="screen-lang" class="screen">
+      <div class="lang-wrap">
+        <h2 class="mode-heading">&gt; SELECT_LANGUAGE<span class="cursor">_</span></h2>
+        <p class="mode-sub">Pick a language to study — or Scramble them all.</p>
+        <div id="lang-grid" class="lang-grid"></div>
+        <button class="btn btn-ghost btn-sm" id="btn-lang-home">← Change player</button>
+      </div>
+    </section>
+
+    <!-- ============ MODE SELECT SCREEN ============ -->
+    <section id="screen-mode" class="screen">
+      <div class="mode-wrap">
+        <h2 class="mode-heading">Welcome, <span id="mode-name" class="accent">Player</span>! Pick a mode:</h2>
+        <div class="mode-grid">
+          <button class="mode-card" id="mode-classic">
+            <div class="mode-emoji">🧠</div>
+            <h3>Classic Quiz</h3>
+            <p>Answer C++ memory questions across 6 levels. Keep the RAM healthy!</p>
+          </button>
+          <button class="mode-card" id="mode-basketball">
+            <div class="mode-emoji">🏀</div>
+            <h3>Basketball <span class="mode-tag">NEW</span></h3>
+            <p>Shoot hoops against the CPU! Random questions pause the game — answer to gain the edge.</p>
+          </button>
+          <button class="mode-card" id="mode-pacman">
+            <div class="mode-emoji">👻</div>
+            <h3>Code-Man <span class="mode-tag">NEW</span></h3>
+            <p>Chomp dots in a maze, dodge bug-ghosts, and eat ❓ pellets to answer &amp; power up!</p>
+          </button>
+          <button class="mode-card" id="mode-gta">
+            <div class="mode-emoji">🚔</div>
+            <h3>Cops &amp; Robbers <span class="mode-tag hot">POPULAR</span></h3>
+            <p>First-person driving! Cruise the city, dodge cops &amp; traffic, and hit 💰 jobs to earn cash.</p>
+          </button>
+        </div>
+        <label class="zen-toggle" id="zen-toggle">
+          <input type="checkbox" id="zen-check" />
+          <span>🧘 Zen Mode — no timer, no lives. Learn at your own pace.</span>
+        </label>
+        <div class="mode-actions">
+          <p class="mode-sub">Then choose a topic level:</p>
+          <div id="level-buttons" class="level-buttons"></div>
+          <button class="btn btn-ghost btn-sm" id="btn-mode-lang">← Change language</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ HOW TO PLAY (instructions) ============ -->
+    <section id="screen-howto" class="screen">
+      <div class="howto-card">
+        <div class="howto-emoji" id="howto-emoji">🎮</div>
+        <h2 class="howto-title" id="howto-title">How to Play</h2>
+        <p class="howto-goal" id="howto-goal"></p>
+        <div class="howto-controls" id="howto-controls"></div>
+        <p class="howto-tip" id="howto-tip"></p>
+        <div class="howto-actions">
+          <button class="btn btn-primary btn-big" id="howto-start">✓ I'm Ready — Start!</button>
+          <button class="btn btn-ghost" id="howto-back">← Back</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ BASKETBALL SCREEN ============ -->
+    <section id="screen-basketball" class="screen">
+      <header class="hud">
+        <div class="hud-left">
+          <button class="btn btn-ghost btn-sm" id="bb-quit">✕ Quit</button>
+          <div class="level-pill" id="bb-pill">🏀 Basketball</div>
+        </div>
+        <div class="hud-right">
+          <div class="bb-score"><span class="bb-you">YOU <b id="bb-you-score">0</b></span>
+            <span class="bb-vs">vs</span>
+            <span class="bb-cpu">CPU <b id="bb-cpu-score">0</b></span></div>
+        </div>
+      </header>
+
+      <div class="escape-stage">
+        <canvas id="bb-canvas" width="640" height="460"></canvas>
+        <div class="escape-hint" id="bb-hint"><b>A/D</b> run • <b>W</b> jump • tap <b>SPACE</b> to shoot (closer = easier) • near the hoop it's a <b>DUNK</b> • <b>P</b> to pass. First to 21!</div>
+
+        <div class="escape-q hidden" id="bb-q">
+          <div class="escape-q-card bb-q-card">
+            <div class="q-topic" id="bq-topic">Topic</div>
+            <h2 class="q-text" id="bq-text">Question</h2>
+            <pre class="q-code hidden" id="bq-code"></pre>
+            <div class="answers" id="bq-answers"></div>
+            <div class="type-answer hidden" id="bq-type">
+              <input type="text" id="bq-input" autocomplete="off" spellcheck="false" placeholder="Type your answer..." />
+              <button class="btn btn-primary" id="bq-submit">Submit</button>
+            </div>
+            <p class="eq-feedback hidden" id="bq-feedback"></p>
+          </div>
+        </div>
+
+        <button class="btn btn-primary bb-shoot-btn" id="bb-shoot">🏀 SHOOT / DUNK</button>
+        <button class="btn btn-ghost bb-pass-btn" id="bb-pass">🙌 PASS (P)</button>
+      </div>
+    </section>
+
+    <!-- ============ CODE CITY (GTA) ============ -->
+    <section id="screen-gta" class="screen">
+      <header class="hud">
+        <div class="hud-left">
+          <button class="btn btn-ghost btn-sm" id="gta-quit">✕ Exit Game</button>
+          <div class="level-pill" id="gta-pill">🚗 Code City</div>
+        </div>
+        <div class="hud-right">
+          <div class="gta-wanted" id="gta-wanted">💼 0 / 0 jobs</div>
+          <div class="score-box"><span class="score-label">CASH</span><span class="score-value" id="gta-cash">$0</span></div>
+        </div>
+      </header>
+
+      <div class="escape-stage">
+        <canvas id="gta-canvas" width="640" height="480"></canvas>
+        <div class="escape-hint" id="gta-hint">↑/W accelerate • ↓/S brake • ←→/A D steer • move mouse to look • drive into 💰 jobs • grab 💵 cash • dodge 🚗 traffic!</div>
+        <div class="gta-flash hidden" id="gta-flash">BUSTED!</div>
+
+        <div class="escape-prompt hidden" id="gta-prompt"><span id="gta-prompt-text">Press <b>E</b> to start job</span></div>
+
+        <div class="escape-q hidden" id="gta-q">
+          <div class="escape-q-card gta-q-card">
+            <div class="q-topic" id="gq-topic">Topic</div>
+            <h2 class="q-text" id="gq-text">Question</h2>
+            <pre class="q-code hidden" id="gq-code"></pre>
+            <div class="answers" id="gq-answers"></div>
+            <div class="type-answer hidden" id="gq-type">
+              <input type="text" id="gq-input" autocomplete="off" spellcheck="false" placeholder="Type your answer..." />
+              <button class="btn btn-primary" id="gq-submit">Submit</button>
+            </div>
+            <p class="eq-feedback hidden" id="gq-feedback"></p>
+          </div>
+        </div>
+
+        <div class="dpad" id="gta-dpad">
+          <button data-dir="up">▲</button>
+          <div class="dpad-mid">
+            <button data-dir="left">◀</button>
+            <button data-dir="act" class="dpad-act">E</button>
+            <button data-dir="right">▶</button>
+          </div>
+          <button data-dir="down">▼</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ CODE-MAN (PAC-MAN) ============ -->
+    <section id="screen-pacman" class="screen">
+      <header class="hud">
+        <div class="hud-left">
+          <button class="btn btn-ghost btn-sm" id="pac-quit">✕ Quit</button>
+          <div class="level-pill" id="pac-pill">👻 Code-Man</div>
+        </div>
+        <div class="hud-right">
+          <div class="pac-lives" id="pac-lives">❤️❤️❤️</div>
+          <div class="score-box"><span class="score-label">SCORE</span><span class="score-value" id="pac-score">0</span></div>
+        </div>
+      </header>
+
+      <div class="escape-stage">
+        <canvas id="pac-canvas" width="630" height="450"></canvas>
+        <div class="escape-hint" id="pac-hint">Arrow keys / WASD to move • eat all dots • grab ❓ pellets for questions!</div>
+
+        <div class="escape-q hidden" id="pac-q">
+          <div class="escape-q-card pac-q-card">
+            <div class="q-topic" id="pq-topic">Topic</div>
+            <h2 class="q-text" id="pq-text">Question</h2>
+            <pre class="q-code hidden" id="pq-code"></pre>
+            <div class="answers" id="pq-answers"></div>
+            <div class="type-answer hidden" id="pq-type">
+              <input type="text" id="pq-input" autocomplete="off" spellcheck="false" placeholder="Type your answer..." />
+              <button class="btn btn-primary" id="pq-submit">Submit</button>
+            </div>
+            <p class="eq-feedback hidden" id="pq-feedback"></p>
+          </div>
+        </div>
+
+        <div class="dpad" id="pac-dpad">
+          <button data-dir="up">▲</button>
+          <div class="dpad-mid">
+            <button data-dir="left">◀</button>
+            <button data-dir="down" class="dpad-act">▼</button>
+            <button data-dir="right">▶</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ QUIZ SCREEN ============ -->
+    <section id="screen-quiz" class="screen">
+      <header class="hud">
+        <div class="hud-left">
+          <button class="btn btn-ghost btn-sm" id="btn-quit">✕ Quit</button>
+          <div class="level-pill" id="level-pill">Level 1</div>
+        </div>
+        <div class="hud-center">
+          <div class="ram-meter" title="RAM usage — leaks fill it up!">
+            <div class="ram-label">RAM</div>
+            <div class="ram-track"><div class="ram-fill" id="ram-fill"></div></div>
+          </div>
+        </div>
+        <div class="hud-right">
+          <div class="sound-toggles">
+            <button class="btn-icon" id="btn-music" title="Toggle music">🎵</button>
+            <button class="btn-icon" id="btn-sfx" title="Toggle sound effects">🔊</button>
+          </div>
+          <div class="hearts" id="hearts"></div>
+          <div class="score-box">
+            <span class="score-label">SCORE</span>
+            <span class="score-value" id="score">0</span>
+          </div>
+        </div>
+      </header>
+
+      <div class="progress-row">
+        <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+        <div class="q-count" id="q-count">1 / 5</div>
+      </div>
+
+      <div class="timer-track"><div class="timer-fill" id="timer-fill"></div></div>
+
+      <main class="quiz-body">
+        <div class="streak-badge hidden" id="streak-badge">🔥 Streak x1</div>
+        <div class="question-card">
+          <div class="q-topic" id="q-topic">Pointers</div>
+          <h2 class="q-text" id="q-text">Question goes here</h2>
+          <pre class="q-code hidden" id="q-code"></pre>
+        </div>
+
+        <div class="answers" id="answers"></div>
+
+        <div class="type-answer hidden" id="type-answer">
+          <input type="text" id="type-input" autocomplete="off" spellcheck="false"
+                 placeholder="Type your answer, e.g.  delete[] arr;" />
+          <button class="btn btn-primary" id="btn-submit">Submit</button>
+        </div>
+      </main>
+    </section>
+
+    <!-- ============ FEEDBACK OVERLAY ============ -->
+    <div id="feedback" class="feedback-overlay hidden">
+      <div class="feedback-card" id="feedback-card">
+        <div class="feedback-icon" id="feedback-icon">✓</div>
+        <h3 class="feedback-title" id="feedback-title">Correct!</h3>
+        <p class="feedback-points" id="feedback-points">+100</p>
+        <div class="feedback-explain" id="feedback-explain"></div>
+        <button class="btn btn-primary" id="btn-next">Next →</button>
+      </div>
+    </div>
+
+    <!-- ============ CERTIFICATE SCREEN ============ -->
+    <section id="screen-cert" class="screen">
+      <div class="cert-outer">
+        <div class="certificate" id="certificate">
+          <div class="cert-border">
+            <div class="cert-seal">⭐</div>
+            <p class="cert-kicker">CODE MASTER — CERTIFICATE OF ACHIEVEMENT</p>
+            <p class="cert-presented">This certifies that</p>
+            <h2 class="cert-name" id="cert-name">Player</h2>
+            <p class="cert-presented">has successfully completed all levels and is hereby recognized as a</p>
+            <h3 class="cert-title" id="cert-title">Certified Python Pro</h3>
+            <div class="cert-footer">
+              <div><span id="cert-date">Date</span><br><small>Date</small></div>
+              <div><span class="cert-sig">Code&nbsp;Master</span><br><small>Awarded by</small></div>
+            </div>
+          </div>
+        </div>
+        <div class="cert-actions">
+          <button class="btn btn-primary" id="btn-print-cert">🖨️ Print / Save PDF</button>
+          <button class="btn btn-ghost" id="btn-cert-home">← Back</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ RESULTS SCREEN ============ -->
+    <section id="screen-results" class="screen">
+      <div class="results-card">
+        <h2 id="results-title">Level Complete!</h2>
+        <div class="rank-badge" id="rank-badge">🏅 Memory Apprentice</div>
+        <div class="results-stats">
+          <div class="stat"><span class="stat-num" id="res-score">0</span><span class="stat-lbl">Score</span></div>
+          <div class="stat"><span class="stat-num" id="res-acc">0%</span><span class="stat-lbl">Accuracy</span></div>
+          <div class="stat"><span class="stat-num" id="res-streak">0</span><span class="stat-lbl">Best Streak</span></div>
+        </div>
+        <p class="results-msg" id="results-msg"></p>
+        <div class="results-actions">
+          <button class="btn btn-primary hidden" id="btn-claim-cert">🏆 Claim Certificate</button>
+          <button class="btn btn-primary" id="btn-next-level">Next Level →</button>
+          <button class="btn btn-ghost" id="btn-retry">↻ Retry</button>
+          <button class="btn btn-ghost" id="btn-home">⌂ Home</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script src="matrix.js"></script>
+  <script src="avatar.js"></script>
+  <script src="questions.js"></script>
+  <script src="audio.js"></script>
+  <script src="basketball.js"></script>
+  <script src="pacman.js"></script>
+  <script src="gta.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>

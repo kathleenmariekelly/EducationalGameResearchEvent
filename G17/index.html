@@ -1,0 +1,1847 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Code Tower — Learn to Code</title>
+<style>
+  :root {
+    --bg: #0f1220;
+    --panel: #1a1f36;
+    --panel2: #232a4a;
+    --accent: #5cd6c0;
+    --accent2: #ffb347;
+    --danger: #ff5d73;
+    --good: #6bd968;
+    --text: #e8ecff;
+    --muted: #8b93b8;
+    --common: #b8c0e0;
+    --rare: #4fa3ff;
+    --epic: #c77dff;
+  }
+  * { box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; }
+  body { margin:0; background: radial-gradient(circle at 50% -10%, #1c2244, var(--bg)); color: var(--text); min-height:100vh; }
+  #app { max-width: 940px; margin: 0 auto; padding: 20px; }
+  h1 { text-align:center; letter-spacing:1px; margin:8px 0; }
+  .sub { text-align:center; color: var(--muted); margin-bottom:18px; }
+
+  .statusbar { display:flex; justify-content:space-between; align-items:center; background:var(--panel); border-radius:12px; padding:12px 16px; margin-bottom:16px; }
+  .stage-tag { font-weight:bold; color:var(--accent); }
+  .hp-wrap { flex:1; margin:0 14px; }
+  .hp-label { font-size:12px; color:var(--muted); margin-bottom:2px; display:flex; justify-content:space-between; }
+  .bar { height:14px; background:#0c0f1c; border-radius:8px; overflow:hidden; }
+  .bar > span { display:block; height:100%; transition:width .4s ease; }
+  .enemy-bar > span { background:linear-gradient(90deg, var(--danger), #ff9d6e); }
+  .player-bar > span { background:linear-gradient(90deg, var(--good), var(--accent)); }
+  .shield-tag { color:#7ec8ff; font-weight:bold; }
+
+  .panel { background:var(--panel); border-radius:12px; padding:18px; margin-bottom:16px; }
+
+  .enemy { text-align:center; padding:16px; margin-bottom:8px; }
+  .enemy .emoji { font-size:56px; }
+  .enemy .name { font-size:20px; font-weight:bold; }
+  .enemy .topic { color:var(--muted); font-size:13px; }
+
+  .question { font-size:17px; font-weight:600; margin-bottom:6px; }
+  .code { background:#0c0f1c; border:1px solid #2a3160; border-radius:8px; padding:10px 12px; font-family:'Consolas',monospace; font-size:14px; white-space:pre; overflow-x:auto; margin:8px 0; color:#d8e0ff; }
+  .qhint { color:var(--accent2); font-size:14px; margin-bottom:12px; }
+  .options { display:grid; gap:10px; }
+  .opt { text-align:left; padding:12px 14px; border-radius:10px; cursor:pointer; background:var(--panel2); border:2px solid transparent; color:var(--text); font-size:15px; transition:.15s; }
+  .opt:hover { border-color:var(--accent); }
+  .opt.selected { border-color:var(--accent); background:#2b3566; }
+  .opt.correct { border-color:var(--good); background:#234a2b; }
+  .opt.wrong { border-color:var(--danger); background:#4a2330; }
+  .opt.missed { border-color:var(--accent2); }
+
+  .cards { display:flex; gap:10px; flex-wrap:wrap; margin-top:4px; }
+  .card { flex:1 1 150px; background:linear-gradient(160deg,#2a3160,#1a1f36); border:2px solid #3a4478; border-radius:12px; padding:12px; cursor:pointer; transition:.15s; min-width:140px; position:relative; }
+  .card:hover { transform:translateY(-3px); }
+  .card .cname { font-weight:bold; }
+  .card .cdesc { font-size:12px; color:var(--muted); margin-top:4px; }
+  .card .rarity { position:absolute; top:8px; right:10px; font-size:10px; text-transform:uppercase; letter-spacing:1px; font-weight:bold; }
+  .card.common { border-color:#3a4478; } .card.common .rarity { color:var(--common); }
+  .card.rare   { border-color:var(--rare); box-shadow:0 0 8px rgba(79,163,255,.3);} .card.rare .rarity { color:var(--rare); }
+  .card.epic   { border-color:var(--epic); box-shadow:0 0 12px rgba(199,125,255,.45);} .card.epic .rarity { color:var(--epic); }
+  .card.draft { flex:1 1 210px; text-align:center; padding:22px 14px; }
+  .card.draft:hover { transform:translateY(-6px); }
+  .card.draft .cname { font-size:16px; }
+
+  /* ---- Fanned hand: cards look held by an invisible hand at the bottom ---- */
+  .hand-fan {
+    position: relative;
+    height: 190px;
+    margin: 28px auto 6px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    perspective: 900px;
+  }
+  .hand-card {
+    position: absolute;
+    bottom: 0;
+    width: 150px;
+    min-height: 130px;
+    padding: 14px 12px 12px;
+    border-radius: 14px;
+    background: linear-gradient(160deg,#2a3160,#141a30);
+    border: 2px solid #3a4478;
+    box-shadow: 0 10px 22px rgba(0,0,0,.45);
+    cursor: pointer;
+    transform-origin: bottom center;   /* pivot at the invisible hand */
+    transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
+    text-align: left;
+  }
+  .hand-card .cname { font-weight:bold; font-size:14px; }
+  .hand-card .cdesc { font-size:11px; color:var(--muted); margin-top:6px; line-height:1.35; }
+  .hand-card .rarity { position:absolute; top:8px; right:10px; font-size:9px; text-transform:uppercase; letter-spacing:1px; font-weight:bold; }
+  .hand-card.common { border-color:#4a5590; } .hand-card.common .rarity { color:var(--common); }
+  .hand-card.rare   { border-color:var(--rare); box-shadow:0 10px 22px rgba(0,0,0,.45), 0 0 10px rgba(79,163,255,.35); } .hand-card.rare .rarity { color:var(--rare); }
+  .hand-card.epic   { border-color:var(--epic); box-shadow:0 10px 22px rgba(0,0,0,.45), 0 0 14px rgba(199,125,255,.5); } .hand-card.epic .rarity { color:var(--epic); }
+  /* base transform comes from per-card CSS vars so hover can keep position */
+  .hand-card {
+    transform: translateX(var(--tx,0)) translateY(var(--ty,0)) rotate(var(--rot,0deg)) scale(1);
+  }
+  .hand-card:hover {
+    /* stay in place (keep --tx/--ty/--rot) and just grow a little */
+    transform: translateX(var(--tx,0)) translateY(var(--ty,0)) rotate(var(--rot,0deg)) scale(1.06) !important;
+    z-index: 1000 !important;
+    box-shadow: 0 12px 24px rgba(0,0,0,.5);
+    filter: brightness(1.1);
+  }
+  .hand-card.focused { filter:brightness(1.12); }
+  .hand-empty { color:var(--muted); text-align:center; padding:20px 0; }
+  .hand-nav {
+    position:absolute; bottom:44px; z-index:1001;
+    width:38px; height:38px; border-radius:50%;
+    background:var(--panel2); color:var(--text);
+    border:2px solid #3a4478; font-size:16px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    transition:.15s;
+  }
+  .hand-nav:hover { border-color:var(--accent); background:#2a3160; }
+  .hand-nav.left  { left:6px; }
+  .hand-nav.right { right:6px; }
+  .hand-hint { text-align:center; color:var(--muted); font-size:12px; margin-top:2px; }
+
+  /* ---- 2D explore ---- */
+  .explore-wrap { text-align:center; }
+  #scene { background:#0c0f1c; border:2px solid #2a3160; border-radius:12px; display:block; margin:8px auto; max-width:100%; image-rendering:pixelated; }
+  .explore-hint { color:var(--muted); font-size:14px; margin-top:6px; }
+  .targets { display:flex; gap:10px; flex-wrap:wrap; }
+  .tchip { flex:1 1 130px; min-width:120px; background:var(--panel2); border:2px solid #3a4478; border-radius:10px; padding:8px 10px; cursor:pointer; transition:.15s; font-size:13px; }
+  .tchip:hover { border-color:var(--accent); }
+  .tchip.sel { border-color:var(--accent2); box-shadow:0 0 8px rgba(255,179,71,.4); }
+  .tchip.dead { opacity:.4; cursor:default; text-decoration:line-through; }
+  .tchip .tmini { height:6px; margin-top:6px; }
+
+  .btn { display:inline-block; padding:12px 22px; border-radius:10px; border:none; font-size:16px; font-weight:bold; cursor:pointer; background:var(--accent); color:#0c0f1c; transition:.15s; margin:4px; }
+  .btn:hover { filter:brightness(1.1); } .btn:disabled { opacity:.4; cursor:not-allowed; }
+  .btn.diff { background:var(--panel2); color:var(--text); border:2px solid #3a4478; padding:16px 24px; }
+  .btn.diff:hover { border-color:var(--accent2); }
+  .btn-row { text-align:center; margin-top:14px; }
+
+  .world-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:14px; }
+  .world { background:var(--panel2); border:2px solid #3a4478; border-radius:14px; padding:20px; cursor:pointer; transition:.15s; text-align:center; }
+  .world:hover { transform:translateY(-4px); border-color:var(--accent); }
+  .world .wemoji { font-size:44px; }
+  .world .wname { font-size:18px; font-weight:bold; color:var(--accent); margin-top:6px; }
+  .world .wdesc { font-size:13px; color:var(--muted); margin-top:4px; }
+
+  .feedback { border-radius:10px; padding:14px; margin-top:14px; line-height:1.5; }
+  .feedback.hit { background:#1b3324; border-left:4px solid var(--good); }
+  .feedback.miss { background:#3a1e28; border-left:4px solid var(--danger); }
+  .feedback .teach { margin-top:10px; font-size:14px; }
+  .feedback .teach b { color:var(--accent); }
+  .review { margin-top:12px; }
+  .review-title { font-size:13px; font-weight:700; color:#ffd27d; margin-bottom:8px; }
+  .review-item { border-radius:8px; padding:8px 10px; margin:6px 0; background:rgba(0,0,0,.22); border-left:4px solid #555; }
+  .review-item.missed { border-left-color:var(--accent2); }
+  .review-item.wrong  { border-left-color:var(--danger); }
+  .review-head { display:flex; gap:8px; align-items:baseline; flex-wrap:wrap; }
+  .review-tag { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; padding:2px 6px; border-radius:5px; white-space:nowrap; }
+  .review-item.missed .review-tag { color:var(--accent2); background:rgba(199,125,255,.14); }
+  .review-item.wrong  .review-tag { color:var(--danger);  background:rgba(255,93,115,.14); }
+  .review-opt { font-size:13px; font-weight:600; }
+  .review-why { font-size:12.5px; color:var(--muted); margin-top:4px; line-height:1.45; }
+  .review-perfect { margin-top:10px; font-size:13px; color:var(--good); font-weight:600; }
+
+  .center { text-align:center; } .big { font-size:44px; margin:10px; } .muted { color:var(--muted); }
+  .float { animation:bob 2s ease-in-out infinite; } @keyframes bob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+  .dmg-pop { color:var(--danger); font-weight:bold; font-size:22px; }
+
+  table.lb { width:100%; border-collapse:collapse; margin-top:8px; }
+  table.lb th, table.lb td { padding:8px 10px; text-align:left; border-bottom:1px solid #2a3160; font-size:14px; }
+  table.lb th { color:var(--accent); }
+  table.lb tr.you { background:#23305a; }
+  .name-input { padding:10px 12px; border-radius:8px; border:2px solid #3a4478; background:var(--panel2); color:var(--text); font-size:15px; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+/* ============================================================
+   CODE TOWER — educational card/tower game
+   Worlds -> Difficulty -> Draft (rarity cards) -> Fights
+   ============================================================ */
+
+// ================= WORLDS & CONTENT =================
+// Each world has a set of bosses; each boss has a pool of questions.
+const WORLDS = {
+  binary: {
+    name:"Binary & 2's Complement", emoji:"🔢",
+    desc:"Bits, bases, and signed numbers.",
+    enemyTypes:[
+      { name:"Bit Mite",    emoji:"🪲", hpMult:0.55, dmgMult:0.5 },
+      { name:"Byte Imp",    emoji:"👺", hpMult:0.75, dmgMult:0.75 },
+      { name:"Nibble Newt", emoji:"🦎", hpMult:0.65, dmgMult:0.6 },
+      { name:"Carry Cralwer",emoji:"🕷️", hpMult:0.9,  dmgMult:0.9 },
+    ],
+    bosses:[
+      { name:"Base Gremlin", emoji:"👾", topic:"Binary basics", hp:100, pool:[
+        { q:"Select ALL correct conversions.", options:[
+            {t:"1010₂ = 10",correct:true},{t:"1111₂ = 15",correct:true},
+            {t:"1000₂ = 16",correct:false},{t:"0110₂ = 6",correct:true},
+            {t:"1100₂ = 14",correct:false}],
+          alt:[{t:"0001₂ = 1",correct:true},{t:"1001₂ = 8",correct:false}],
+          teach:"Each bit is a power of 2 (…8,4,2,1). 1010=8+2=10, 1111=15, 1000=8, 0110=6, 1100=12." },
+        { q:"Select ALL true statements about binary and place value.", options:[
+            {t:"Shifting left by 1 multiplies by 2",correct:true},
+            {t:"Shifting right by 1 divides by 2 (integer)",correct:true},
+            {t:"n bits represent 2ⁿ distinct values",correct:true},
+            {t:"n bits represent up to 2ⁿ (i.e. max value 2ⁿ)",correct:false}],
+          teach:"n bits give 2ⁿ patterns, so unsigned range is 0..2ⁿ−1. Left shift ×2, right shift ÷2." },
+        { q:"Select ALL correct binary additions.", options:[
+            {t:"0011 + 0001 = 0100",correct:true},{t:"0101 + 0011 = 1000",correct:true},
+            {t:"0111 + 0001 = 1000",correct:true},{t:"1010 + 0101 = 1110",correct:false},
+            {t:"0110 + 0110 = 1000",correct:false}],
+          teach:"Add like decimal, carrying at 2. 0011+0001=0100, 0101+0011=1000, 0111+0001=1000, 1010+0101=1111, 0110+0110=1100." },
+        { q:"How many values / what range for these bit widths? Select ALL true.", options:[
+            {t:"4 bits → 16 values (0..15)",correct:true},
+            {t:"8 bits → 256 values (0..255)",correct:true},
+            {t:"10 bits → 1024 values",correct:true},
+            {t:"16 bits → 32768 values",correct:false}],
+          teach:"n bits → 2ⁿ values. 16 bits = 65536 values (0..65535)." },
+        { q:"Select ALL correct decimal→binary conversions.", options:[
+            {t:"13 = 1101",correct:true},{t:"20 = 10100",correct:true},
+            {t:"7 = 0111",correct:true},{t:"9 = 1011",correct:false},
+            {t:"18 = 10001",correct:false}],
+          teach:"13=8+4+1=1101, 20=16+4=10100, 7=4+2+1=0111, 9=1001, 18=10010." },
+        { q:"Select ALL true about even/odd and low bits.", options:[
+            {t:"A binary number is even iff its last bit is 0",correct:true},
+            {t:"ANDing with 1 tests the least-significant bit",correct:true},
+            {t:"Numbers ending in 1 are odd",correct:true},
+            {t:"The MSB determines even/odd",correct:false}],
+          teach:"The least-significant bit decides parity: 0=even, 1=odd. x & 1 extracts it." },
+      ]},
+      { name:"Hex Wraith", emoji:"🔮", topic:"Hex & bases", hp:120, pool:[
+        { q:"Select ALL correct hex facts.", options:[
+            {t:"0xF = 15",correct:true},{t:"0x10 = 16",correct:true},
+            {t:"One hex digit = 4 bits (a nibble)",correct:true},
+            {t:"0xFF = 256",correct:false},{t:"0xA = 11",correct:false}],
+          teach:"Hex digit = 4 bits. 0xF=15, 0x10=16, 0xFF=255, 0xA=10." },
+        { q:"0b11010110 — select ALL correct interpretations (unsigned).", options:[
+            {t:"= 214",correct:true},{t:"= 0xD6",correct:true},
+            {t:"Has 5 bits set",correct:true},{t:"= 0xC6",correct:false}],
+          teach:"11010110 = 128+64+16+4+2 = 214 = 0xD6, with five 1-bits." },
+        { q:"Select ALL correct hex↔decimal conversions.", options:[
+            {t:"0x1F = 31",correct:true},{t:"0x20 = 32",correct:true},
+            {t:"0x64 = 100",correct:true},{t:"0x2A = 44",correct:false},
+            {t:"0xB = 12",correct:false}],
+          teach:"0x1F=31, 0x20=32, 0x64=100, 0x2A=42, 0xB=11." },
+        { q:"Select ALL correct binary↔hex groupings (4 bits per hex digit).", options:[
+            {t:"1111 0000 = 0xF0",correct:true},{t:"1010 1100 = 0xAC",correct:true},
+            {t:"0011 1001 = 0x39",correct:true},{t:"1101 0010 = 0xC2",correct:false}],
+          teach:"Group bits in fours: 1111=F,0000=0 → 0xF0; 1010 1100=0xAC; 0011 1001=0x39; 1101 0010=0xD2." },
+        { q:"Select ALL true about octal and other bases.", options:[
+            {t:"One octal digit = 3 bits",correct:true},
+            {t:"0o17 = 15 in decimal",correct:true},
+            {t:"Base b uses digits 0..b−1",correct:true},
+            {t:"Hex uses digits 0-9 and A-G",correct:false}],
+          teach:"Octal digit = 3 bits, 0o17 = 8+7 = 15. Hex letters run A(10)–F(15) only." },
+        { q:"0xCAFE — select ALL correct facts.", options:[
+            {t:"It fits in 16 bits",correct:true},
+            {t:"= 51966 in decimal",correct:true},
+            {t:"= 1100 1010 1111 1110 in binary",correct:true},
+            {t:"It fits in 8 bits",correct:false}],
+          teach:"0xCAFE = 4 hex digits = 16 bits = 51966 = 1100 1010 1111 1110." },
+      ]},
+      { name:"Two's Complement Titan", emoji:"⚖️", topic:"Signed numbers", hp:150, pool:[
+        { q:"Select ALL true statements about two's complement (8-bit).", options:[
+            {t:"The MSB acts as the sign bit",correct:true},
+            {t:"Range is −128 to 127",correct:true},
+            {t:"Negate = invert all bits then add 1",correct:true},
+            {t:"There are two representations of zero",correct:false},
+            {t:"11111111 = −1",correct:true}],
+          alt:[{t:"10000000 = −128",correct:true},{t:"Range is −127 to 128",correct:false}],
+          teach:"Two's complement has ONE zero, range −128..127 (8-bit). Negate = invert+1. 11111111 = −1." },
+        { q:"To compute −5 in 8-bit two's complement, select ALL correct steps/results.", options:[
+            {t:"Start: 00000101 (=5)",correct:true},
+            {t:"Invert: 11111010",correct:true},
+            {t:"Add 1: 11111011",correct:true},
+            {t:"Result equals 0xFB",correct:true},
+            {t:"Result equals 0x05",correct:false}],
+          teach:"−5: 00000101 → invert 11111010 → +1 = 11111011 = 0xFB." },
+        { q:"8-bit two's complement — select ALL correct values.", options:[
+            {t:"10000000 = −128",correct:true},{t:"11111110 = −2",correct:true},
+            {t:"01111111 = 127",correct:true},{t:"11110000 = −32",correct:false},
+            {t:"10000001 = −128",correct:false}],
+          teach:"MSB set = negative. 10000000=−128, 11111110=−2, 01111111=127, 11110000=−16, 10000001=−127." },
+        { q:"Select ALL true about signed overflow (8-bit two's complement).", options:[
+            {t:"127 + 1 wraps to −128",correct:true},
+            {t:"Adding two positives can yield a negative (overflow)",correct:true},
+            {t:"−128 has no positive counterpart in 8 bits",correct:true},
+            {t:"Overflow is impossible in fixed-width ints",correct:false}],
+          teach:"Fixed width wraps around: 127+1 = −128. |−128| = 128 can't be stored as +128 in 8 bits." },
+        { q:"Select ALL true about sign extension & shifts.", options:[
+            {t:"Sign-extending copies the MSB into new high bits",correct:true},
+            {t:"Arithmetic right shift preserves the sign bit",correct:true},
+            {t:"Logical right shift fills with 0s",correct:true},
+            {t:"Sign extension always fills with 0s",correct:false}],
+          teach:"Sign extension replicates the sign bit; arithmetic >> keeps sign, logical >> fills zeros." },
+        { q:"Select ALL correct binary arithmetic results (8-bit).", min:"medium", options:[
+            {t:"0110 1010 + 0001 0110 = 1000 0000",correct:true},
+            {t:"1010 & 0110 = 0010",correct:true},
+            {t:"1010 | 0101 = 1111",correct:true},
+            {t:"1100 ^ 1010 = 0100",correct:false}],
+          teach:"106+22=128=1000 0000. AND keeps common 1s (0010), OR unions (1111), 1100 XOR 1010 = 0110." },
+        { q:"IEEE-754 single precision — select ALL TRUE.", min:"hard", options:[
+            {t:"It uses 1 sign, 8 exponent, and 23 mantissa bits",correct:true},
+            {t:"The exponent is stored with a bias of 127",correct:true},
+            {t:"There is an implicit leading 1 for normalized values",correct:true},
+            {t:"0.1 can be represented exactly",correct:false}],
+          teach:"32-bit float = 1+8+23 bits, exponent bias 127, implicit leading 1; 0.1 is not exact in binary." },
+      ]},
+    ],
+  },
+
+  comporg: {
+    name:"Computer Organization", emoji:"🔌",
+    desc:"Boolean logic and logic gates.",
+    enemyTypes:[
+      { name:"AND Ant",    emoji:"🐜", hpMult:0.55, dmgMult:0.5 },
+      { name:"OR Ogreling",emoji:"👺", hpMult:0.8,  dmgMult:0.8 },
+      { name:"NOT Newt",   emoji:"🦎", hpMult:0.7,  dmgMult:0.7 },
+      { name:"XOR Xerus",  emoji:"🐿️", hpMult:0.65, dmgMult:0.6 },
+    ],
+    bosses:[
+      { name:"Gate Keeper", emoji:"🚪", topic:"Basic logic gates", hp:100, pool:[
+        { q:"Select ALL correct outputs for a 2-input AND gate.", options:[
+            {t:"AND(1,1) = 1",correct:true},{t:"AND(1,0) = 0",correct:true},
+            {t:"AND(0,0) = 0",correct:true},{t:"AND(1,0) = 1",correct:false},
+            {t:"AND(1,1) = 0",correct:false}],
+          teach:"AND outputs 1 only when ALL inputs are 1; otherwise 0." },
+        { q:"Select ALL correct outputs for a 2-input OR gate.", options:[
+            {t:"OR(0,0) = 0",correct:true},{t:"OR(1,0) = 1",correct:true},
+            {t:"OR(1,1) = 1",correct:true},{t:"OR(0,0) = 1",correct:false}],
+          teach:"OR outputs 1 when at least one input is 1; it is 0 only when all inputs are 0." },
+        { q:"Select ALL TRUE about the NOT gate (inverter).", options:[
+            {t:"NOT(0) = 1",correct:true},{t:"NOT(1) = 0",correct:true},
+            {t:"It has exactly one input",correct:true},{t:"NOT(1) = 1",correct:false}],
+          teach:"A NOT gate (inverter) has one input and flips it: 0->1, 1->0." },
+        { q:"Select ALL correct outputs for a 2-input XOR gate.", options:[
+            {t:"XOR(1,1) = 0",correct:true},{t:"XOR(1,0) = 1",correct:true},
+            {t:"XOR(0,0) = 0",correct:true},{t:"XOR outputs 1 when inputs are equal",correct:false}],
+          teach:"XOR outputs 1 when inputs DIFFER, 0 when they are equal." },
+        { q:"Select ALL TRUE about NAND and NOR gates.", options:[
+            {t:"NAND is AND followed by NOT",correct:true},
+            {t:"NAND(1,1) = 0",correct:true},
+            {t:"NOR(0,0) = 1",correct:true},
+            {t:"NOR is OR with no inversion",correct:false}],
+          teach:"NAND = NOT(AND), NOR = NOT(OR). NAND(1,1)=0, NOR(0,0)=1." },
+      ]},
+      { name:"Boolean Baron", emoji:"🎩", topic:"Boolean algebra", hp:130, pool:[
+        { q:"Select ALL correct Boolean identities.", options:[
+            {t:"A + 0 = A",correct:true},{t:"A · 1 = A",correct:true},
+            {t:"A + A' = 1",correct:true},{t:"A · A' = 1",correct:false}],
+          teach:"Identity: A+0=A, A·1=A. Complement: A+A'=1, A·A'=0." },
+        { q:"Select ALL correct Boolean laws.", options:[
+            {t:"A + 1 = 1",correct:true},{t:"A · 0 = 0",correct:true},
+            {t:"A + A = A (idempotent)",correct:true},{t:"A · A = 0",correct:false}],
+          teach:"Domination: A+1=1, A·0=0. Idempotent: A+A=A, A·A=A." },
+        { q:"Select ALL correct statements of De Morgan's laws.", options:[
+            {t:"(A · B)' = A' + B'",correct:true},
+            {t:"(A + B)' = A' · B'",correct:true},
+            {t:"De Morgan swaps AND↔OR while inverting",correct:true},
+            {t:"(A · B)' = A' · B'",correct:false}],
+          teach:"De Morgan: (A·B)'=A'+B' and (A+B)'=A'·B' — invert each term and swap the operator." },
+        { q:"Select ALL correct absorption / negation rules.", options:[
+            {t:"A + A·B = A (absorption)",correct:true},
+            {t:"A · (A + B) = A",correct:true},
+            {t:"(A')' = A (double negation)",correct:true},
+            {t:"A + A'·B = A·B",correct:false}],
+          teach:"Absorption: A+A·B=A, A·(A+B)=A. Double negation: (A')'=A. Note A+A'·B = A+B." },
+        { q:"Select ALL correct simplifications.", options:[
+            {t:"A·B + A·B' = A",correct:true},
+            {t:"(A + B)·(A + B') = A",correct:true},
+            {t:"A·(B + B') = A",correct:true},
+            {t:"A·B + A·B' = B",correct:false}],
+          teach:"Combine terms that differ in one variable: A·B+A·B'=A, and (A+B)(A+B')=A." },
+        { q:"Select ALL correct simplifications of F = A·B + A·B'·C.", min:"medium", options:[
+            {t:"F = A·(B + C)",correct:true},
+            {t:"F = A·B + A·C",correct:true},
+            {t:"It depends on all three variables",correct:true},
+            {t:"F simplifies to A",correct:false}],
+          teach:"A·B + A·B'·C = A·(B + B'·C) = A·(B + C). It still needs C, so it isn't just A." },
+        { q:"XOR algebra — select ALL TRUE.", min:"hard", options:[
+            {t:"A ⊕ 0 = A",correct:true},
+            {t:"A ⊕ A = 0",correct:true},
+            {t:"A ⊕ 1 = A' (NOT A)",correct:true},
+            {t:"A ⊕ A = 1",correct:false}],
+          teach:"XOR identities: A⊕0=A, A⊕A=0, A⊕1=A'. XOR with itself is always 0." },
+      ]},
+      { name:"Karnaugh Colossus", emoji:"🗺️", topic:"K-maps & simplification", hp:160, pool:[
+        { q:"Select ALL TRUE about Karnaugh maps.", options:[
+            {t:"Adjacent cells differ by exactly one variable",correct:true},
+            {t:"Grouping 1s in powers of 2 simplifies the expression",correct:true},
+            {t:"Larger groups yield simpler product terms",correct:true},
+            {t:"Cells are labeled in plain binary 00,01,10,11 order",correct:false}],
+          teach:"K-map cells use Gray-code order so neighbors differ in one bit; bigger power-of-2 groups = simpler terms." },
+        { q:"Select ALL TRUE about forming groups in a K-map.", options:[
+            {t:"Groups must be sizes 1, 2, 4, 8, ...",correct:true},
+            {t:"Groups may wrap around the edges",correct:true},
+            {t:"Groups may overlap",correct:true},
+            {t:"A group may contain a 0",correct:false}],
+          teach:"Groups are powers of 2, can wrap and overlap, and must cover only 1s (for SOP)." },
+        { q:"Select ALL TRUE about SOP/POS and minterms.", options:[
+            {t:"SOP = sum of products (OR of ANDed terms)",correct:true},
+            {t:"A minterm is 1 for exactly one input combination",correct:true},
+            {t:"POS = product of sums",correct:true},
+            {t:"SOP is formed by grouping the 0s of the function",correct:false}],
+          teach:"SOP ORs product (minterm) groups of 1s; POS ANDs sum groups. Grouping 0s gives POS." },
+        { q:"Select ALL TRUE about don't-care conditions.", options:[
+            {t:"A don't-care (X) may be treated as 0 or 1",correct:true},
+            {t:"Using them can enlarge groups and simplify further",correct:true},
+            {t:"They mark input combinations that cannot occur",correct:true},
+            {t:"Every don't-care must be covered by a group",correct:false}],
+          teach:"Don't-cares are flexible: include them only when they help build bigger groups." },
+        { q:"A function is 1 only when A=1 and B=1. Select ALL correct.", options:[
+            {t:"Minimal SOP is A·B",correct:true},
+            {t:"It behaves like an AND gate",correct:true},
+            {t:"The K-map has a single 1 in the AB=11 cell",correct:true},
+            {t:"Minimal form is A + B",correct:false}],
+          teach:"One 1 at AB=11 gives the minterm A·B — exactly an AND gate." },
+      ]},
+      { name:"Circuit Sovereign", emoji:"⚡", topic:"Combinational circuits", hp:190, pool:[
+        { q:"Select ALL TRUE about a half adder.", options:[
+            {t:"Sum = A XOR B",correct:true},
+            {t:"Carry = A AND B",correct:true},
+            {t:"It adds two single bits",correct:true},
+            {t:"It accepts a carry-in",correct:false}],
+          teach:"Half adder: Sum=A⊕B, Carry=A·B. It has no carry-in." },
+        { q:"Select ALL TRUE about a full adder.", options:[
+            {t:"It adds three bits: A, B, and carry-in",correct:true},
+            {t:"Sum = A XOR B XOR Cin",correct:true},
+            {t:"Cout = A·B + Cin·(A XOR B)",correct:true},
+            {t:"It can never produce a carry-out",correct:false}],
+          teach:"Full adder sums A,B,Cin: Sum=A⊕B⊕Cin, Cout=A·B+Cin·(A⊕B)." },
+        { q:"Select ALL TRUE about multiplexers and decoders.", options:[
+            {t:"A 2-to-1 MUX selects one of two data inputs",correct:true},
+            {t:"An n-select MUX chooses among 2ⁿ inputs",correct:true},
+            {t:"A decoder activates one output per input code",correct:true},
+            {t:"A MUX has more outputs than inputs",correct:false}],
+          teach:"A MUX routes one of many inputs to a single output; a decoder drives one of 2ⁿ output lines." },
+        { q:"Select ALL TRUE about universal gates.", options:[
+            {t:"NAND is functionally complete (universal)",correct:true},
+            {t:"NOR is functionally complete",correct:true},
+            {t:"Any Boolean function can be built from only NANDs",correct:true},
+            {t:"AND by itself is universal",correct:false}],
+          teach:"NAND and NOR are each universal — any circuit can be built from only NANDs (or only NORs)." },
+        { q:"Select ALL TRUE about combinational vs sequential logic.", options:[
+            {t:"Combinational output depends only on current inputs",correct:true},
+            {t:"Sequential logic has memory/state",correct:true},
+            {t:"A flip-flop stores one bit",correct:true},
+            {t:"Combinational circuits use feedback loops to store state",correct:false}],
+          teach:"Combinational = no memory (output from current inputs); sequential adds state via flip-flops/feedback." },
+      ]},
+    ],
+  },
+
+  ds: {
+    name:"Data Structures", emoji:"🌳",
+    desc:"Arrays, lists, hashes, trees.",
+    enemyTypes:[
+      { name:"Node Sprite",  emoji:"🧚", hpMult:0.6,  dmgMult:0.55 },
+      { name:"Pointer Pixie",emoji:"🧚‍♂️", hpMult:0.75, dmgMult:0.7 },
+      { name:"Index Imp",    emoji:"👺", hpMult:0.7,  dmgMult:0.75 },
+      { name:"Leaf Larva",   emoji:"🐛", hpMult:0.55, dmgMult:0.5 },
+    ],
+    bosses:[
+      { name:"Array Golem", emoji:"🗿", topic:"Arrays & Big-O", hp:100, pool:[
+        { q:"Select ALL true statements about a dynamic array (JS array, C++ vector).", options:[
+            {t:"Indexing by position is O(1)",correct:true},{t:"Appending is amortized O(1)",correct:true},
+            {t:"Inserting at the front is O(1)",correct:false},{t:"Elements are stored contiguously",correct:true},
+            {t:"Searching an unsorted array is O(log n)",correct:false}],
+          alt:[{t:"Removing the last element is O(1)",correct:true}],
+          teach:"Dynamic arrays: O(1) random access, amortized O(1) append. Front insert is O(n); unsorted search is O(n)." },
+        { q:"Why is append 'amortized' O(1)? Select all correct reasons.", options:[
+            {t:"Most appends write to a free slot",correct:true},
+            {t:"Occasionally it resizes (copies all)",correct:true},
+            {t:"Doubling capacity makes resizes rare",correct:true},
+            {t:"Every append copies the whole array",correct:false}],
+          teach:"Doubling makes total copy work ~2n across n appends → average O(1)." },
+        { q:"Select ALL operations that are O(n) on a dynamic array.", options:[
+            {t:"Inserting at the front",correct:true},
+            {t:"Deleting from the middle",correct:true},
+            {t:"Searching an unsorted array",correct:true},
+            {t:"Reading arr[i] by index",correct:false}],
+          teach:"Front/middle insert & delete shift elements (O(n)); unsorted search is O(n). Index access is O(1)." },
+        { q:"Select ALL true about Big-O growth.", options:[
+            {t:"O(1) < O(log n) < O(n) < O(n log n) < O(n²)",correct:true},
+            {t:"Constants and lower-order terms are dropped",correct:true},
+            {t:"O(2n) simplifies to O(n)",correct:true},
+            {t:"O(n²) is faster than O(n) for large n",correct:false}],
+          teach:"Big-O ignores constants/low-order terms and describes growth. n² grows faster (slower runtime) than n." },
+        { q:"Binary search on a sorted array — select ALL true.", options:[
+            {t:"Runs in O(log n)",correct:true},
+            {t:"Requires the array to be sorted",correct:true},
+            {t:"Halves the search space each step",correct:true},
+            {t:"Works on an unsorted array",correct:false}],
+          teach:"Binary search needs sorted data and halves the range each step → O(log n)." },
+        { q:"Sorting complexity — select ALL TRUE.", min:"medium", options:[
+            {t:"Merge sort is O(n log n) in the worst case",correct:true},
+            {t:"Quicksort averages O(n log n) but is O(n²) worst case",correct:true},
+            {t:"A comparison sort cannot beat O(n log n) worst case",correct:true},
+            {t:"Bubble sort is O(n log n)",correct:false}],
+          teach:"Merge sort is always O(n log n); quicksort averages that but degrades to O(n²). Comparison sorts have an Ω(n log n) lower bound; bubble sort is O(n²)." },
+        { q:"Amortized analysis — select ALL TRUE.", min:"hard", options:[
+            {t:"It averages cost over a sequence of operations",correct:true},
+            {t:"Dynamic-array doubling gives amortized O(1) append",correct:true},
+            {t:"A single operation may still be O(n)",correct:true},
+            {t:"Amortized O(1) means every operation is O(1)",correct:false}],
+          teach:"Amortized cost spreads expensive steps (like a resize) across many cheap ones; individual ops can still spike." },
+      ]},
+      { name:"Linked Serpent", emoji:"🐍", topic:"Linked Lists", hp:130, pool:[
+        { q:"Select ALL advantages a linked list has over a dynamic array.", options:[
+            {t:"O(1) insert/delete at a known node",correct:true},{t:"No shifting on insertion",correct:true},
+            {t:"O(1) random access by index",correct:false},{t:"Better cache locality",correct:false},
+            {t:"Grows without copying existing nodes",correct:true}],
+          teach:"Linked lists: O(1) splicing, no copy to grow. Weaknesses: O(n) index access, poor cache locality." },
+        { q:"Select ALL true about stacks and queues.", options:[
+            {t:"A stack is LIFO (last in, first out)",correct:true},
+            {t:"A queue is FIFO (first in, first out)",correct:true},
+            {t:"Push/pop and enqueue/dequeue are O(1)",correct:true},
+            {t:"A stack removes the oldest element first",correct:false}],
+          teach:"Stack = LIFO, queue = FIFO; their core ops are O(1). Stacks remove the newest item." },
+        { q:"Doubly linked list vs singly — select ALL true.", options:[
+            {t:"Doubly linked nodes store prev and next",correct:true},
+            {t:"Doubly linked allows O(1) delete given the node",correct:true},
+            {t:"Doubly linked uses more memory per node",correct:true},
+            {t:"Singly linked lists can be traversed backward easily",correct:false}],
+          teach:"Doubly linked lists add a prev pointer: easier backward traversal & O(1) delete, at extra memory cost." },
+        { q:"Select ALL true about detecting a cycle in a linked list.", options:[
+            {t:"Floyd's fast/slow pointers detect cycles in O(n)",correct:true},
+            {t:"A hash set of visited nodes also works",correct:true},
+            {t:"A cyclic list has no null tail",correct:true},
+            {t:"Cycles are impossible in linked lists",correct:false}],
+          teach:"Use two pointers (tortoise & hare) or a visited set. A cycle means traversal never hits null." },
+      ]},
+      { name:"Hash Djinn", emoji:"🧞", topic:"Hash Tables", hp:170, pool:[
+        { q:"Select ALL true statements about hash tables.", options:[
+            {t:"Average lookup/insert is O(1)",correct:true},{t:"Worst case can be O(n)",correct:true},
+            {t:"They keep keys sorted",correct:false},{t:"Collisions: chaining or open addressing",correct:true},
+            {t:"A bad hash causes many collisions",correct:true}],
+          teach:"Hash tables: average O(1), worst O(n). No sorted order. Collisions via chaining/open addressing." },
+        { q:"Select ALL true about load factor and resizing.", options:[
+            {t:"Load factor = entries / buckets",correct:true},
+            {t:"A high load factor increases collisions",correct:true},
+            {t:"Rehashing into more buckets restores performance",correct:true},
+            {t:"Load factor has no effect on lookups",correct:false}],
+          teach:"Load factor = n/buckets. As it rises, collisions grow; tables rehash into more buckets to stay O(1)." },
+        { q:"Select ALL true about hash functions.", options:[
+            {t:"Equal keys must produce equal hashes",correct:true},
+            {t:"A good hash spreads keys uniformly",correct:true},
+            {t:"Different keys may collide to the same bucket",correct:true},
+            {t:"A perfect hash guarantees no collisions for any input",correct:false}],
+          teach:"Equal keys → equal hashes; good hashes distribute evenly. Collisions are expected for arbitrary inputs." },
+        { q:"Select ALL true about sets and maps.", options:[
+            {t:"A hash set stores unique keys with O(1) average membership tests",correct:true},
+            {t:"A tree-based map (e.g. std::map) keeps keys sorted",correct:true},
+            {t:"Tree maps offer O(log n) operations",correct:true},
+            {t:"Hash maps guarantee iteration in sorted order",correct:false}],
+          teach:"Hash-based sets/maps: O(1) average, unordered. Tree-based maps: O(log n), sorted iteration." },
+      ]},
+      { name:"Binary Tree Wyrm", emoji:"🐲", topic:"Trees & BSTs", hp:200, pool:[
+        { q:"Select ALL true statements about a Binary Search Tree.", options:[
+            {t:"In-order traversal yields sorted order",correct:true},{t:"Balanced search is O(log n)",correct:true},
+            {t:"Unbalanced can degrade to O(n)",correct:true},{t:"Left child > parent > right child",correct:false},
+            {t:"AVL/Red-Black self-balance",correct:true}],
+          teach:"BST: left<parent<right; in-order=sorted; balanced O(log n), degenerate O(n). AVL/RB auto-balance." },
+        { q:"Select ALL true about tree traversals.", options:[
+            {t:"Pre-order visits node, then left, then right",correct:true},
+            {t:"Post-order visits left, right, then node",correct:true},
+            {t:"Level-order (BFS) uses a queue",correct:true},
+            {t:"In-order of a BST yields reverse-sorted order",correct:false}],
+          teach:"Pre = N,L,R; Post = L,R,N; Level-order uses a queue. In-order of a BST gives ascending order." },
+        { q:"Select ALL true about binary heaps.", options:[
+            {t:"A min-heap's root is the smallest element",correct:true},
+            {t:"Insert and extract-min are O(log n)",correct:true},
+            {t:"Heaps are commonly stored in an array",correct:true},
+            {t:"A heap keeps all elements fully sorted",correct:false}],
+          teach:"Heaps give O(log n) insert/extract and O(1) peek; they enforce heap order, not full sorting." },
+        { q:"Select ALL true about graphs and their traversal.", options:[
+            {t:"BFS explores level by level using a queue",correct:true},
+            {t:"DFS goes deep first, often using recursion/stack",correct:true},
+            {t:"BFS finds shortest paths in an unweighted graph",correct:true},
+            {t:"DFS always finds the shortest path",correct:false}],
+          teach:"BFS (queue) = shortest paths in unweighted graphs; DFS (stack/recursion) explores deeply but not shortest." },
+      ]},
+    ],
+  },
+
+  db: {
+    name:"Databases", emoji:"🗄️",
+    desc:"SQL, keys, and normalization.",
+    enemyTypes:[
+      { name:"Row Rat",     emoji:"🐀", hpMult:0.6,  dmgMult:0.55 },
+      { name:"Null Naiad",  emoji:"🧜", hpMult:0.7,  dmgMult:0.7 },
+      { name:"Deadlock Djinn",emoji:"🧞", hpMult:0.9, dmgMult:0.9 },
+      { name:"Index Imp",   emoji:"👺", hpMult:0.75, dmgMult:0.75 },
+    ],
+    bosses:[
+      { name:"Query Kobold", emoji:"🧌", topic:"SQL basics", hp:110, pool:[
+        { q:"Select ALL TRUE about SQL SELECT.", options:[
+            {t:"WHERE filters rows before grouping",correct:true},
+            {t:"HAVING filters after GROUP BY",correct:true},
+            {t:"ORDER BY sorts the result",correct:true},
+            {t:"WHERE can use aggregate functions like COUNT()",correct:false},
+            {t:"SELECT * returns all columns",correct:true}],
+          alt:[{t:"GROUP BY is required with every SELECT",correct:false}],
+          teach:"Order: WHERE (row filter) → GROUP BY → HAVING (group filter) → ORDER BY. Aggregates belong in HAVING, not WHERE." },
+        { q:"Select ALL correct about JOINs.", options:[
+            {t:"INNER JOIN keeps only matching rows",correct:true},
+            {t:"LEFT JOIN keeps all left rows + matches",correct:true},
+            {t:"A missing match in LEFT JOIN yields NULLs",correct:true},
+            {t:"CROSS JOIN filters by a condition",correct:false}],
+          teach:"INNER = matches only. LEFT = all left rows (NULLs where no match). CROSS = Cartesian product, no condition." },
+        { q:"Select ALL TRUE about aggregate functions and GROUP BY.", options:[
+            {t:"COUNT(*) counts rows in each group",correct:true},
+            {t:"Non-aggregated SELECT columns should appear in GROUP BY",correct:true},
+            {t:"AVG, SUM, MIN, MAX are aggregates",correct:true},
+            {t:"WHERE can filter on SUM() directly",correct:false}],
+          teach:"Aggregates summarize groups; group by the non-aggregated columns. Filter aggregates in HAVING, not WHERE." },
+        { q:"Select ALL TRUE about NULL in SQL.", options:[
+            {t:"NULL means unknown/missing",correct:true},
+            {t:"x = NULL is never true; use IS NULL",correct:true},
+            {t:"COUNT(col) ignores NULLs",correct:true},
+            {t:"NULL = NULL evaluates to true",correct:false}],
+          teach:"NULL is unknown; comparisons with = yield unknown. Use IS NULL. COUNT(col) skips NULLs." },
+        { q:"Select ALL TRUE about DISTINCT and LIMIT.", options:[
+            {t:"DISTINCT removes duplicate rows from results",correct:true},
+            {t:"LIMIT restricts the number of rows returned",correct:true},
+            {t:"ORDER BY + LIMIT gives top-N results",correct:true},
+            {t:"DISTINCT sorts the result set",correct:false}],
+          teach:"DISTINCT dedupes (order not guaranteed); LIMIT caps rows; combine with ORDER BY for top-N." },
+      ]},
+      { name:"Key Warden", emoji:"🗝️", topic:"Keys & constraints", hp:140, pool:[
+        { q:"Select ALL TRUE about primary and foreign keys.", options:[
+            {t:"A primary key uniquely identifies a row",correct:true},
+            {t:"A primary key cannot be NULL",correct:true},
+            {t:"A foreign key references a key in another table",correct:true},
+            {t:"A table can have many primary keys",correct:false},
+            {t:"Foreign keys help enforce referential integrity",correct:true}],
+          teach:"One PK per table (may be composite), unique & non-null. FKs reference another table's key and enforce referential integrity." },
+        { q:"Select ALL TRUE about indexes.", options:[
+            {t:"Indexes speed up reads/lookups",correct:true},
+            {t:"Indexes slow down inserts/updates",correct:true},
+            {t:"A PRIMARY KEY is usually backed by an index",correct:true},
+            {t:"Adding many indexes always improves overall performance",correct:false}],
+          teach:"Indexes trade write speed & storage for faster reads. Too many indexes hurt writes." },
+        { q:"Select ALL TRUE about constraints.", options:[
+            {t:"UNIQUE prevents duplicate values in a column",correct:true},
+            {t:"NOT NULL forbids missing values",correct:true},
+            {t:"CHECK enforces a boolean condition per row",correct:true},
+            {t:"A UNIQUE column can never be part of a key",correct:false}],
+          teach:"Constraints (UNIQUE, NOT NULL, CHECK, FK) enforce data integrity. A UNIQUE column can serve as a key." },
+        { q:"Select ALL TRUE about composite and candidate keys.", options:[
+            {t:"A composite key uses more than one column",correct:true},
+            {t:"A candidate key uniquely identifies rows and could be the PK",correct:true},
+            {t:"A table can have several candidate keys",correct:true},
+            {t:"A composite key must always include the row id",correct:false}],
+          teach:"Composite keys span multiple columns; candidate keys are minimal unique identifiers, one chosen as PK." },
+      ]},
+      { name:"Normalization Naga", emoji:"🐍", topic:"Normalization", hp:170, pool:[
+        { q:"Select ALL TRUE about database normalization.", options:[
+            {t:"It reduces data redundancy",correct:true},
+            {t:"1NF requires atomic (indivisible) column values",correct:true},
+            {t:"It can require more JOINs to read data",correct:true},
+            {t:"Denormalization can speed up reads",correct:true},
+            {t:"Higher normal forms always improve performance",correct:false}],
+          alt:[{t:"Normalization increases redundancy",correct:false}],
+          teach:"Normalization cuts redundancy & anomalies but adds JOINs. Denormalization trades redundancy for read speed. More normalization ≠ faster." },
+        { q:"Select ALL TRUE about update/insert/delete anomalies.", options:[
+            {t:"Redundant data can cause update anomalies (inconsistent copies)",correct:true},
+            {t:"Insert anomalies: can't add data without unrelated data",correct:true},
+            {t:"Delete anomalies: removing a row loses unrelated facts",correct:true},
+            {t:"Normalization tends to increase these anomalies",correct:false}],
+          teach:"Anomalies come from redundancy; normalization reduces them by splitting data into well-defined tables." },
+        { q:"Select ALL TRUE about 2NF and 3NF.", options:[
+            {t:"2NF removes partial dependencies on part of a composite key",correct:true},
+            {t:"3NF removes transitive dependencies on non-key columns",correct:true},
+            {t:"A table must be in 1NF before it can be in 2NF",correct:true},
+            {t:"3NF requires columns to be non-atomic",correct:false}],
+          teach:"1NF (atomic) → 2NF (no partial deps) → 3NF (no transitive deps). Each builds on the previous." },
+        { q:"Select ALL TRUE about denormalization.", options:[
+            {t:"It intentionally adds redundancy for speed",correct:true},
+            {t:"It can reduce the number of JOINs at read time",correct:true},
+            {t:"It risks inconsistent duplicated data",correct:true},
+            {t:"It is always the wrong choice",correct:false}],
+          teach:"Denormalization is a deliberate trade-off: faster reads/fewer JOINs at the cost of redundancy & consistency risk." },
+      ]},
+      { name:"Transaction Leviathan", emoji:"🌊", topic:"Transactions", hp:200, pool:[
+        { q:"Select ALL that correctly describe ACID.", options:[
+            {t:"Atomicity: all-or-nothing",correct:true},
+            {t:"Consistency: valid state to valid state",correct:true},
+            {t:"Isolation: concurrent txns don't corrupt each other",correct:true},
+            {t:"Durability: committed data survives crashes",correct:true},
+            {t:"Availability is the 'A' in ACID",correct:false}],
+          teach:"ACID = Atomicity, Consistency, Isolation, Durability. (Availability is from CAP, not ACID.)" },
+        { q:"Select ALL TRUE about COMMIT and ROLLBACK.", options:[
+            {t:"COMMIT makes a transaction's changes permanent",correct:true},
+            {t:"ROLLBACK undoes changes since the transaction began",correct:true},
+            {t:"Atomicity relies on all-or-nothing commit/rollback",correct:true},
+            {t:"ROLLBACK permanently saves the changes",correct:false}],
+          teach:"COMMIT persists changes; ROLLBACK discards them. Together they give atomic all-or-nothing behavior." },
+        { q:"Select ALL TRUE about concurrency problems.", options:[
+            {t:"Dirty read: reading another txn's uncommitted data",correct:true},
+            {t:"Non-repeatable read: a re-read returns different values",correct:true},
+            {t:"Deadlock: two txns each wait on the other's lock",correct:true},
+            {t:"Higher isolation levels never affect performance",correct:false}],
+          teach:"Isolation levels prevent dirty/non-repeatable/phantom reads but stronger isolation can reduce concurrency." },
+        { q:"Select ALL TRUE about isolation levels.", options:[
+            {t:"READ COMMITTED prevents dirty reads",correct:true},
+            {t:"SERIALIZABLE is the strictest level",correct:true},
+            {t:"Higher isolation reduces concurrency anomalies",correct:true},
+            {t:"READ UNCOMMITTED is the safest level",correct:false}],
+          teach:"From weakest to strongest: READ UNCOMMITTED → READ COMMITTED → REPEATABLE READ → SERIALIZABLE." },
+        { q:"Select ALL isolation levels that PREVENT a non-repeatable read.", min:"medium", options:[
+            {t:"REPEATABLE READ",correct:true},
+            {t:"SERIALIZABLE",correct:true},
+            {t:"READ COMMITTED",correct:false},
+            {t:"READ UNCOMMITTED",correct:false}],
+          teach:"Non-repeatable reads are stopped only at REPEATABLE READ and above; READ COMMITTED still allows them." },
+        { q:"Select ALL TRUE about phantom reads and locking.", min:"hard", options:[
+            {t:"A phantom read is new rows appearing in a repeated range query",correct:true},
+            {t:"SERIALIZABLE prevents phantom reads",correct:true},
+            {t:"Range/predicate locks help stop phantoms",correct:true},
+            {t:"REPEATABLE READ always prevents phantoms in every DBMS",correct:false}],
+          teach:"Phantoms are new rows matching a prior query; only SERIALIZABLE reliably prevents them (via range locks)." },
+      ]},
+    ],
+  },
+
+  discrete: {
+    name:"Discrete Mathematics", emoji:"➗",
+    desc:"Logic, sets, counting, and graphs.",
+    enemyTypes:[
+      { name:"Set Sprite",   emoji:"🧩", hpMult:0.6,  dmgMult:0.55 },
+      { name:"Proof Pixie",  emoji:"🧚", hpMult:0.75, dmgMult:0.7 },
+      { name:"Combo Imp",    emoji:"👺", hpMult:0.7,  dmgMult:0.75 },
+      { name:"Graph Gremlin",emoji:"🕸️", hpMult:0.65, dmgMult:0.6 },
+    ],
+    bosses:[
+      { name:"Logic Lich", emoji:"💀", topic:"Propositional logic", hp:100, pool:[
+        { q:"Select ALL TRUE about logical connectives.", options:[
+            {t:"P ∧ Q is true only when both P and Q are true",correct:true},
+            {t:"P ∨ Q is false only when both are false",correct:true},
+            {t:"¬P is the negation of P",correct:true},
+            {t:"P ∧ Q is true when at least one is true",correct:false}],
+          teach:"AND (∧) needs both true; OR (∨) needs at least one true; NOT (¬) flips the value." },
+        { q:"The implication P → Q — select ALL TRUE.", options:[
+            {t:"It is false only when P is true and Q is false",correct:true},
+            {t:"It is true whenever P is false (vacuously true)",correct:true},
+            {t:"Its contrapositive is ¬Q → ¬P",correct:true},
+            {t:"P → Q is equivalent to P ∧ Q",correct:false}],
+          teach:"P→Q is false only for T→F. It equals ¬P∨Q; its contrapositive ¬Q→¬P is equivalent." },
+        { q:"Select ALL correct logical equivalences.", options:[
+            {t:"P → Q ≡ ¬P ∨ Q",correct:true},
+            {t:"¬(P ∧ Q) ≡ ¬P ∨ ¬Q",correct:true},
+            {t:"P ↔ Q is true when P and Q share the same truth value",correct:true},
+            {t:"P ∨ Q ≡ P ∧ Q",correct:false}],
+          teach:"Key equivalences: P→Q≡¬P∨Q; De Morgan ¬(P∧Q)≡¬P∨¬Q; biconditional means equal values." },
+        { q:"Select ALL TRUE about tautologies and contradictions.", options:[
+            {t:"P ∨ ¬P is a tautology (always true)",correct:true},
+            {t:"P ∧ ¬P is a contradiction (always false)",correct:true},
+            {t:"A tautology is true under every assignment",correct:true},
+            {t:"A contradiction is true under some assignment",correct:false}],
+          teach:"Tautology = true for all assignments; contradiction = false for all assignments." },
+        { q:"Select ALL VALID rules of inference.", options:[
+            {t:"Modus ponens: P, P→Q ⊢ Q",correct:true},
+            {t:"Modus tollens: ¬Q, P→Q ⊢ ¬P",correct:true},
+            {t:"Hypothetical syllogism: P→Q, Q→R ⊢ P→R",correct:true},
+            {t:"Affirming the consequent: Q, P→Q ⊢ P",correct:false}],
+          teach:"Modus ponens/tollens and hypothetical syllogism are valid; affirming the consequent is a fallacy." },
+      ]},
+      { name:"Set Sorcerer", emoji:"🧙", topic:"Set theory", hp:130, pool:[
+        { q:"Select ALL TRUE about set operations.", options:[
+            {t:"A ∪ B contains elements in A or B",correct:true},
+            {t:"A ∩ B contains elements in both A and B",correct:true},
+            {t:"A \ B removes B's elements from A",correct:true},
+            {t:"A ∩ B contains elements in either A or B",correct:false}],
+          teach:"Union = in either; intersection = in both; difference A\B = in A but not B." },
+        { q:"Select ALL TRUE about subsets and power sets.", options:[
+            {t:"The empty set is a subset of every set",correct:true},
+            {t:"A set with n elements has 2ⁿ subsets",correct:true},
+            {t:"The power set is the set of all subsets",correct:true},
+            {t:"A set is never a subset of itself",correct:false}],
+          teach:"∅ ⊆ every set, every set ⊆ itself, and |P(A)| = 2^{|A|}." },
+        { q:"Select ALL correct De Morgan laws for sets.", options:[
+            {t:"(A ∪ B)' = A' ∩ B'",correct:true},
+            {t:"(A ∩ B)' = A' ∪ B'",correct:true},
+            {t:"Complement swaps ∪ and ∩",correct:true},
+            {t:"(A ∪ B)' = A' ∪ B'",correct:false}],
+          teach:"Complementing swaps union and intersection: (A∪B)'=A'∩B', (A∩B)'=A'∪B'." },
+        { q:"Select ALL TRUE about cardinality.", options:[
+            {t:"|A ∪ B| = |A| + |B| − |A ∩ B|",correct:true},
+            {t:"|∅| = 0",correct:true},
+            {t:"Disjoint sets have |A ∩ B| = 0",correct:true},
+            {t:"|A ∪ B| = |A| + |B| always",correct:false}],
+          teach:"Inclusion-exclusion: |A∪B|=|A|+|B|−|A∩B|; the last only holds when disjoint." },
+        { q:"Select ALL TRUE about Cartesian products and relations.", options:[
+            {t:"A × B is the set of ordered pairs (a, b)",correct:true},
+            {t:"|A × B| = |A| · |B|",correct:true},
+            {t:"A relation from A to B is a subset of A × B",correct:true},
+            {t:"A × B = B × A in general",correct:false}],
+          teach:"A×B = ordered pairs, size |A|·|B|; relations are subsets of it. Order matters, so A×B≠B×A generally." },
+      ]},
+      { name:"Combinatorics Colossus", emoji:"🎲", topic:"Counting & combinatorics", hp:160, pool:[
+        { q:"Select ALL TRUE about basic counting.", options:[
+            {t:"Product rule: independent sequential choices multiply",correct:true},
+            {t:"Sum rule: disjoint alternatives add",correct:true},
+            {t:"n! counts orderings of n distinct items",correct:true},
+            {t:"0! = 0",correct:false}],
+          teach:"Multiply for sequences, add for disjoint choices, n! orders n items, and 0! = 1." },
+        { q:"Permutations vs combinations — select ALL TRUE.", options:[
+            {t:"Permutations count ordered arrangements",correct:true},
+            {t:"Combinations count unordered selections",correct:true},
+            {t:"P(n,k) = n! / (n−k)!",correct:true},
+            {t:"C(n,k) = n! / (n−k)!",correct:false}],
+          teach:"P(n,k)=n!/(n−k)! (ordered); C(n,k)=n!/(k!(n−k)!) (unordered)." },
+        { q:"Select ALL correct values.", options:[
+            {t:"C(5,2) = 10",correct:true},{t:"P(4,2) = 12",correct:true},
+            {t:"C(n,0) = 1",correct:true},{t:"C(6,3) = 15",correct:false}],
+          teach:"C(5,2)=10, P(4,2)=12, C(n,0)=1, and C(6,3)=20 (not 15)." },
+        { q:"Select ALL TRUE about binomial coefficients and pigeonhole.", options:[
+            {t:"C(n,k) = C(n, n−k)",correct:true},
+            {t:"Pascal: C(n,k) = C(n−1,k−1) + C(n−1,k)",correct:true},
+            {t:"Pigeonhole: n+1 items in n boxes force a shared box",correct:true},
+            {t:"C(n,k) can be negative",correct:false}],
+          teach:"Symmetry C(n,k)=C(n,n−k), Pascal's rule builds the triangle, pigeonhole forces collisions; counts are ≥0." },
+        { q:"Select ALL TRUE about counting with repetition.", options:[
+            {t:"n^k counts k-length strings over n symbols",correct:true},
+            {t:"Combinations with repetition: C(n+k−1, k)",correct:true},
+            {t:"A binary string of length 8 has 256 possibilities",correct:true},
+            {t:"Order never matters under the product rule",correct:false}],
+          teach:"With repetition allowed: n^k ordered strings, C(n+k−1,k) multisets; 2^8=256." },
+      ]},
+      { name:"Graph Warlord", emoji:"🕸️", topic:"Graph theory", hp:200, pool:[
+        { q:"Select ALL TRUE about graph basics.", options:[
+            {t:"A graph consists of vertices and edges",correct:true},
+            {t:"The degree of a vertex counts its incident edges",correct:true},
+            {t:"Sum of all degrees = 2 × (number of edges)",correct:true},
+            {t:"A directed edge has no orientation",correct:false}],
+          teach:"Handshake lemma: degrees sum to twice the edge count. Directed edges do have a direction." },
+        { q:"Select ALL TRUE about special graphs.", options:[
+            {t:"A complete graph Kn joins every pair of vertices",correct:true},
+            {t:"A tree is a connected acyclic graph",correct:true},
+            {t:"A tree with n vertices has n−1 edges",correct:true},
+            {t:"A cycle graph has no edges",correct:false}],
+          teach:"Kn has every possible edge; a tree is connected & acyclic with exactly n−1 edges." },
+        { q:"Select ALL TRUE about connectivity and trees.", options:[
+            {t:"A connected graph has a path between any two vertices",correct:true},
+            {t:"A bipartite graph splits vertices into two independent sets",correct:true},
+            {t:"A tree has exactly one path between any two vertices",correct:true},
+            {t:"Every graph is a tree",correct:false}],
+          teach:"Connected = paths everywhere; bipartite = 2-colorable; trees have unique paths between vertices." },
+        { q:"Euler and Hamilton — select ALL TRUE.", options:[
+            {t:"An Euler circuit uses every edge exactly once",correct:true},
+            {t:"An Euler circuit exists iff every vertex has even degree",correct:true},
+            {t:"A Hamiltonian cycle visits every vertex exactly once",correct:true},
+            {t:"Euler and Hamiltonian paths are the same thing",correct:false}],
+          teach:"Euler = every EDGE once (needs even degrees); Hamilton = every VERTEX once. They differ." },
+        { q:"Select ALL TRUE about graph coloring and planarity.", options:[
+            {t:"A proper coloring gives adjacent vertices different colors",correct:true},
+            {t:"The chromatic number is the fewest colors needed",correct:true},
+            {t:"A planar graph can be drawn with no edge crossings",correct:true},
+            {t:"Every graph needs at least 4 colors",correct:false}],
+          teach:"Proper coloring separates neighbors; chromatic number is the minimum colors (planar graphs need ≤4)." },
+        { q:"Select ALL TRUE about mathematical induction.", min:"medium", options:[
+            {t:"You prove a base case, then the inductive step",correct:true},
+            {t:"The inductive step assumes P(k) to prove P(k+1)",correct:true},
+            {t:"Strong induction may assume P(1)..P(k)",correct:true},
+            {t:"Induction works without any base case",correct:false}],
+          teach:"Induction = base case + inductive step (P(k)⇒P(k+1)). Strong induction assumes all prior cases; the base case is required." },
+        { q:"Modular arithmetic — select ALL TRUE.", min:"hard", options:[
+            {t:"17 mod 5 = 2",correct:true},
+            {t:"(a + b) mod n = ((a mod n) + (b mod n)) mod n",correct:true},
+            {t:"a ≡ b (mod n) means n divides (a − b)",correct:true},
+            {t:"(-3) mod 5 = -3",correct:false}],
+          teach:"17 mod 5 = 2; addition distributes over mod; a≡b (mod n) iff n|(a−b). With least-residue, (-3) mod 5 = 2." },
+      ]},
+    ],
+  },
+};
+
+// ================= CARD SYSTEM (rarity based) =================
+// Rarity odds scale with floor progress:
+//   start (floor 0):    70% common / 20% rare / 10% epic
+//   top   (last floor):  50% common / 30% rare / 20% epic
+const RARITY_START = { common:70, rare:20, epic:10 };
+const RARITY_END   = { common:50, rare:30, epic:20 };
+
+const CARD_DEFS = {
+  // --- COMMON ---
+  heal20:    { name:"❤️ Patch", rarity:"common", desc:"Restore 20 HP.", },
+  shield:    { name:"🛡️ Shield", rarity:"common", desc:"Block ALL damage on your next turn.", },
+  evade:     { name:"🌫️ Evasive", rarity:"common", desc:"+ evasiveness for 3 turns (boss more likely to miss).", },
+  dmg20:     { name:"⚡ Overclock", rarity:"common", desc:"+20 flat damage on your next answer.", },
+  // --- RARE ---
+  crit:      { name:"⚔️ Empower", rarity:"rare", desc:"Next answer deals 1.5x damage.", },
+  heal40:    { name:"💚 Big Patch", rarity:"rare", desc:"Restore 40 HP.", },
+  pick1:     { name:"🔮 Insight", rarity:"rare", desc:"Reveal & auto-pick 1 correct answer.", },
+  // --- EPIC ---
+  double:    { name:"💥 Double Strike", rarity:"epic", desc:"Next answer deals 2x damage.", },
+  aegis:     { name:"🛡️✨ Aegis", rarity:"epic", desc:"Permanent shield (25 HP) — absorbs all damage until depleted; HP never drops from a hit while it holds.", },
+  reveal2:   { name:"🧠 Clarity", rarity:"epic", desc:"Delete 1 wrong answer AND auto-pick 1 correct answer.", },
+};
+const CARDS_BY_RARITY = { common:[], rare:[], epic:[] };
+Object.entries(CARD_DEFS).forEach(([id,c]) => CARDS_BY_RARITY[c.rarity].push(id));
+
+// progress: 0 at first floor, 1 at the last floor
+function floorProgress() {
+  const last = (state.tower ? state.tower.length : 1) - 1;
+  if (last <= 0) return 1;
+  return Math.min(1, Math.max(0, state.stageIndex / last));
+}
+function currentRarityWeights() {
+  const p = floorProgress();
+  const lerp = (a,b)=> a + (b-a)*p;
+  return {
+    common: lerp(RARITY_START.common, RARITY_END.common),
+    rare:   lerp(RARITY_START.rare,   RARITY_END.rare),
+    epic:   lerp(RARITY_START.epic,   RARITY_END.epic),
+  };
+}
+function rollRarity() {
+  const w = currentRarityWeights();
+  const r = Math.random() * (w.common + w.rare + w.epic);
+  if (r < w.common) return "common";
+  if (r < w.common + w.rare) return "rare";
+  return "epic";
+}
+function rollCard() {
+  const rarity = rollRarity();
+  const pool = CARDS_BY_RARITY[rarity];
+  return pool[Math.floor(Math.random()*pool.length)];
+}
+
+// ================= COMBAT TUNING =================
+// Max damage a question can deal on this floor (before card multipliers).
+// It grows a little per floor so later fights hit harder.
+const BASE_MAX_DAMAGE = 60;
+// Boss lands its attack 75% of the time regardless of floor/difficulty.
+// (Damage amount still scales with difficulty + floor; only the hit CHANCE is flat.)
+const BOSS_HIT_CHANCE = 0.75;
+function floorMaxDamage() {
+  // e.g. floor 1 -> 60, +6 per floor, scaled by difficulty.
+  return Math.round((BASE_MAX_DAMAGE + state.stageIndex * 6) * state.diff.dmgMult);
+}
+
+// ================= DIFFICULTY =================
+const DIFFICULTY = {
+  easy:   { label:"Easy",   floors:3, playerHP:120, dmgMult:0.85, bossBase:6,  bossVar:6,  hpMult:0.9, rank:0 },
+  medium: { label:"Medium", floors:5, playerHP:100, dmgMult:1.0,  bossBase:9,  bossVar:8,  hpMult:1.0, rank:1 },
+  hard:   { label:"Hard",   floors:7, playerHP:85,  dmgMult:1.15, bossBase:12, bossVar:10, hpMult:1.1, rank:2 },
+};
+
+// Question difficulty gating: a question tagged with `min:"medium"` or
+// `min:"hard"` only appears at that difficulty or above.
+const QDIFF_RANK = { easy:0, medium:1, hard:2 };
+
+// ================= STATE =================
+let state = { phase:"menu" };
+
+function makeTower(worldKey, floors) {
+  const bosses = WORLDS[worldKey].bosses;
+  const tower = [];
+  for (let i = 0; i < floors; i++) tower.push(bosses[i % bosses.length]);
+  return tower;
+}
+
+function newGame(worldKey, diffKey) {
+  const d = DIFFICULTY[diffKey];
+  state = {
+    worldKey, world: WORLDS[worldKey],
+    diffKey, diff: d,
+    tower: makeTower(worldKey, d.floors),
+    stageIndex: 0,
+    playerHP: d.playerHP, playerMax: d.playerHP,
+    room: null, target: 0,
+    selected:new Set(), removed:new Set(), revealed:new Set(),
+    hand: [],
+    // per-turn / timed buffs
+    critNext:false, doubleNext:false, dmgBonusNext:0, shieldNext:false,
+    evadeTurns:0, aegis:0,   // aegis = permanent shield hitpoints remaining
+    lastQ:null, wrongMemory:{}, totalAnswers:0,
+    phase:"menu",
+  };
+}
+
+function currentStage(){ return state.tower[state.stageIndex]; }
+function bossFloorScale(){ return 1 + state.stageIndex * 0.12; }
+
+// ======= DRAFT: auto-grant a random 2-4 cards ========
+function startDraft() {
+  // weighted card count: 2 is most likely, then 3, then 4
+  const r = Math.random() * 100;                 // weights 40 / 35 / 25
+  const count = r < 40 ? 2 : r < 75 ? 3 : 4;
+  const granted = [];
+  for (let i = 0; i < count; i++) granted.push(rollCard());
+  granted.forEach(id => state.hand.push({ id }));
+  state.draftGranted = granted;   // for the reveal screen
+  state.phase = "draft";
+  render();
+}
+function continueFromDraft() { beginBattle(); }  // draft -> begin the quiz fight
+
+// ================= STAGE / QUESTION =================
+// Begin the quiz battle inside the (already-built) room.
+function beginBattle() {
+  state.target = firstAliveIndex();
+  pickQuestion();
+  state.phase = "answering";
+  render();
+}
+function firstAliveIndex() {
+  const es = state.room ? state.room.enemies : [];
+  const i = es.findIndex(e => e.alive);
+  return i < 0 ? 0 : i;
+}
+function aliveEnemies() { return state.room ? state.room.enemies.filter(e=>e.alive) : []; }
+function targetEnemy() { return state.room ? state.room.enemies[state.target] : null; }
+
+function pickQuestion() {
+  const s = currentStage();
+  const rank = QDIFF_RANK[state.diffKey] || 0;
+  // Only include questions whose minimum difficulty is unlocked at this level.
+  let pool = s.pool.map((_,i)=>i).filter(i => (QDIFF_RANK[s.pool[i].min] || 0) <= rank);
+  if (!pool.length) pool = s.pool.map((_,i)=>i);
+  let choices = pool.slice();
+  if (choices.length > 1 && state.lastQ != null) choices = choices.filter(i=>i!==state.lastQ);
+  if (!choices.length) choices = pool.slice();
+  const idx = choices[Math.floor(Math.random()*choices.length)];
+  state.lastQ = idx;
+
+  const base = s.pool[idx];
+  let opts = base.options.map(o=>({...o}));
+  const key = state.stageIndex + "|" + base.q;
+  if (state.wrongMemory[key] && base.alt && base.alt.length) {
+    const altCopy = base.alt.map(o=>({...o}));
+    opts = shuffle(opts).slice(0, Math.max(3, opts.length - altCopy.length)).concat(altCopy);
+  }
+  opts = shuffle(opts);
+  state.currentQ = { q: base.q, code: base.code, options: opts, teach: base.teach, key };
+  state.selected=new Set(); state.removed=new Set(); state.revealed=new Set();
+}
+function currentQuestion(){ return state.currentQ; }
+
+// ================= CARDS =================
+function useCard(idx) {
+  if (state.phase !== "answering") return;
+  const card = state.hand[idx];
+  if (!card) return;
+  const q = currentQuestion();
+  const id = card.id;
+
+  switch(id) {
+    case "heal20": state.playerHP = Math.min(state.playerMax, state.playerHP+20); break;
+    case "heal40": state.playerHP = Math.min(state.playerMax, state.playerHP+40); break;
+    case "shield": state.shieldNext = true; break;
+    case "evade":  state.evadeTurns = 3; break;
+    case "dmg20":  state.dmgBonusNext += 20; break;
+    case "crit":   state.critNext = true; break;
+    case "double": state.doubleNext = true; break;
+    case "aegis":  state.aegis = 25; break;
+    case "pick1":  autoPickCorrect(q, 1); break;
+    case "reveal2": deleteWrong(q, 1); autoPickCorrect(q, 1); break;
+  }
+  state.hand.splice(idx, 1);   // consumed card disappears from the hand
+  render();
+}
+function autoPickCorrect(q, n) {
+  const right = q.options.map((o,i)=>i).filter(i=>q.options[i].correct && !state.selected.has(i));
+  shuffle(right).slice(0,n).forEach(i=>{ state.selected.add(i); state.revealed.add(i); });
+}
+function deleteWrong(q, n) {
+  const wrong = q.options.map((o,i)=>i).filter(i=>!q.options[i].correct && !state.removed.has(i));
+  shuffle(wrong).slice(0,n).forEach(i=>state.removed.add(i));
+}
+
+function shuffle(a){ for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
+
+function toggleOption(i){
+  if (state.phase !== "answering") return;
+  if (state.removed.has(i)) return;
+  if (state.selected.has(i)) state.selected.delete(i); else state.selected.add(i);
+  render();
+}
+
+// ================= COMBAT =================
+function submitAnswer() {
+  if (state.phase !== "answering") return;
+  const q = currentQuestion();
+  state.totalAnswers++;
+  const totalCorrect = q.options.filter(o=>o.correct).length;
+
+  let hits=0, wrongPicks=0;
+  q.options.forEach((o,i)=>{ if (state.selected.has(i)) o.correct?hits++:wrongPicks++; });
+
+  // ----- DAMAGE MODEL (per-choice decisions) -----
+  // Every answer choice handled correctly earns an equal share of the floor's
+  // max damage:  correctly SELECTING a correct option, OR correctly LEAVING an
+  // incorrect option unselected. Wrong selections and missed correct answers
+  // simply earn nothing (they don't subtract from the earned amount).
+  //
+  // Example: floor max 60, 5 choices (2 correct). Only right picks = 5/5 -> 60.
+  // Pick 1 correct + 1 incorrect: 1 correct-selected + 2 correct-left = 3 good
+  // decisions -> 60 * (3/5) = 36 damage.
+  const totalChoices = q.options.length;
+  let correctDecisions = 0;
+  q.options.forEach((o,i) => {
+    const picked = state.selected.has(i);
+    if (o.correct && picked) correctDecisions++;          // right: selected a correct
+    else if (!o.correct && !picked) correctDecisions++;   // right: left an incorrect alone
+  });
+  const maxDamage = floorMaxDamage();
+  const fraction = totalChoices > 0 ? correctDecisions / totalChoices : 0;
+  // score = share of the correct answers actually found (boss counter / feedback)
+  let score = totalCorrect > 0 ? Math.max(0, Math.min(1, hits/totalCorrect)) : (wrongPicks===0 ? 1 : 0);
+  if (hits < totalCorrect || wrongPicks > 0) state.wrongMemory[q.key] = true;
+
+  let dmg = Math.round(maxDamage * fraction);
+  dmg += state.dmgBonusNext; state.dmgBonusNext = 0;
+  if (state.critNext)   { dmg = Math.round(dmg*1.5); state.critNext=false; }
+  if (state.doubleNext) { dmg = Math.round(dmg*2);   state.doubleNext=false; }
+  dmg = Math.max(0, dmg);
+
+  // ----- DEAL DAMAGE TO THE TARGET -----
+  const tgt = targetEnemy();
+  let killedName = null;
+  if (tgt && tgt.alive) {
+    tgt.hp = Math.max(0, tgt.hp - dmg);
+    tgt.hitFlash = 8;
+    if (tgt.hp === 0) { tgt.alive = false; killedName = tgt.name; }
+  }
+
+  // ----- ENEMIES STRIKE BACK -----
+  // Every still-living enemy takes a swing. Weak enemies hit for less; the boss
+  // (with a higher dmgMult) hits much harder. Shield / Aegis apply to the total.
+  const scale = bossFloorScale();
+  const attacks = [];
+  let incoming = 0;
+  aliveEnemies().forEach(e => {
+    let hitChance = BOSS_HIT_CHANCE;
+    if (state.evadeTurns > 0) hitChance = Math.max(0.15, hitChance - 0.30);
+    if (Math.random() > hitChance) { attacks.push({ name:e.name, missed:true, dmg:0 }); return; }
+    let raw = state.diff.bossBase*scale + Math.floor(Math.random()*(state.diff.bossVar*scale));
+    raw = Math.round(raw * e.dmgMult * (1 + (1-score)*0.4));
+    incoming += raw;
+    attacks.push({ name:e.name, missed:false, dmg:raw, enemy:e });
+  });
+
+  // ----- ATTACK ANIMATIONS (the only time icons move) -----
+  if (state.room) {
+    const pl = state.room.player;
+    if (tgt && dmg > 0) startLunge(pl, tgt.x, tgt.y);   // player strikes target
+    let delay = 20;
+    attacks.forEach(a => {
+      if (!a.missed && a.enemy) { startLunge(a.enemy, pl.x, pl.y, delay); delay += 8; }
+    });
+  }
+
+  const boss = { attacked: attacks.length>0, blocked:false, aegisAbsorb:0, dmg:0, attacks };
+  if (state.shieldNext) { boss.blocked = true; incoming = 0; }
+  else if (state.aegis > 0 && incoming > 0) {
+    const absorbed = Math.min(incoming, state.aegis);
+    boss.aegisAbsorb = absorbed;
+    state.aegis -= absorbed;
+    incoming -= absorbed;
+  }
+  boss.dmg = incoming;
+  state.playerHP = Math.max(0, state.playerHP - incoming);
+
+  state.shieldNext = false;
+  if (state.evadeTurns > 0) state.evadeTurns--;
+
+  // retarget if the current target just died
+  if (!targetEnemy() || !targetEnemy().alive) state.target = firstAliveIndex();
+
+  // ----- PER-OPTION REVIEW -----
+  // For every option the player mishandled, record WHY so they can learn it and
+  // answer faster next time: a wrongly-checked option (it was false) or a missed
+  // correct option (it was true but left unselected).
+  const mistakes = [];
+  q.options.forEach((o,i) => {
+    const picked = state.selected.has(i);
+    if (o.correct && !picked) {
+      mistakes.push({ text:o.t, kind:"missed",
+        why: o.why || "This statement is TRUE, so it should have been selected." });
+    } else if (!o.correct && picked) {
+      mistakes.push({ text:o.t, kind:"wrong",
+        why: o.why || "This statement is FALSE, so it should have been left unselected." });
+    }
+  });
+
+  const cleared = aliveEnemies().length === 0;
+  state.lastResult = { hits, wrongPicks, totalCorrect, correctDecisions, totalChoices, maxDamage, score, dmg, boss, teach:q.teach, mistakes, killedName, targetName: tgt?tgt.name:"" };
+  state.phase = "resolved";
+  if (state.playerHP <= 0) state.phase = "lost";
+  else if (cleared) { state.room.cleared = true; state.phase = "roomclear"; }
+  render();
+}
+
+function nextAfterResolve() {
+  // Enemies remain: ask the next question, keeping the current target.
+  state.target = firstAliveIndex();
+  pickQuestion();
+  state.phase = "answering";
+  render();
+}
+
+// Room cleared: walk through the open door to the next floor (or win).
+function advanceFloor() {
+  stopScene();
+  if (state.stageIndex >= state.tower.length - 1) { finishGame(true); return; }
+  state.stageIndex++;
+  enterRoom();
+}
+
+// Let the player pick which enemy to attack (only while answering).
+function setTarget(i) {
+  if (state.phase !== "answering") return;
+  const e = state.room.enemies[i];
+  if (!e || !e.alive) return;
+  state.target = i;
+  render();
+}
+function finishGame(won){ state.won = won; state.phase = won?"victory":"lost"; render(); }
+
+// ================= LEADERBOARD =================
+const LB_KEY = "codeTowerLeaderboard_v3";
+function loadLB(){ try { return JSON.parse(localStorage.getItem(LB_KEY))||[]; } catch(e){ return []; } }
+function saveLB(l){ localStorage.setItem(LB_KEY, JSON.stringify(l)); }
+
+function submitScore(name) {
+  const entry = {
+    name:(name||"Anon").slice(0,16),
+    world: state.world.name,
+    floor: state.stageIndex + (state.won?1:0),
+    totalFloors: state.tower.length,
+    completed: !!state.won,
+    answers: state.totalAnswers,
+    difficulty: state.diff.label,
+    when: Date.now(),
+  };
+  const lb = loadLB(); lb.push(entry);
+  lb.sort((a,b)=>{
+    if (a.completed!==b.completed) return a.completed?-1:1;
+    if (a.completed && b.completed) return a.answers-b.answers;
+    if (b.floor!==a.floor) return b.floor-a.floor;
+    return a.answers-b.answers;
+  });
+  saveLB(lb.slice(0,60));
+  state.myEntryWhen = entry.when;
+  state.phase = "leaderboard";
+  render();
+}
+
+// ============================= 2D SCENE =============================
+const SCENE_W = 640, SCENE_H = 360;
+let explore = { raf:0, ctx:null, canvas:null, clickHandler:null };
+
+// Build the enemies for the current floor and set up a fresh room.
+// Non-final floors: 2–4 random weaker enemies (varied HP & damage).
+// Final floor: a single boss with much more HP and damage.
+function buildRoom() {
+  const stage = currentStage();
+  const scale = bossFloorScale();
+  const isFinal = state.stageIndex >= state.tower.length - 1;
+  const enemies = [];
+
+  if (isFinal) {
+    enemies.push({
+      name: stage.name, emoji: stage.emoji, isBoss: true,
+      maxHp: Math.max(1, Math.round(stage.hp * state.diff.hpMult * scale * 1.7)),
+      dmgMult: 1.8, size: 46,
+    });
+  } else {
+    const types = state.world.enemyTypes;
+    const count = 2 + Math.floor(Math.random() * 3); // 2..4 weak enemies
+    for (let i = 0; i < count; i++) {
+      const t = types[Math.floor(Math.random() * types.length)];
+      enemies.push({
+        name: t.name, emoji: t.emoji, isBoss: false,
+        maxHp: Math.max(1, Math.round(stage.hp * state.diff.hpMult * scale * t.hpMult)),
+        dmgMult: t.dmgMult, size: 34,
+      });
+    }
+  }
+
+  // finalize + place enemies around the centre-right of the room
+  const n = enemies.length;
+  enemies.forEach((e, i) => {
+    e.hp = e.maxHp; e.alive = true; e.bob = Math.random() * Math.PI * 2; e.hitFlash = 0;
+    if (e.isBoss || n === 1) { e.x = SCENE_W * 0.6; e.y = SCENE_H / 2; }
+    else {
+      const ang = (i / n) * Math.PI * 2;
+      e.x = SCENE_W * 0.6 + Math.cos(ang) * 78;
+      e.y = SCENE_H / 2 + Math.sin(ang) * 70;
+    }
+  });
+
+  state.room = {
+    cleared: false,
+    player: { x: 90, y: SCENE_H/2, r: 14, dir: 1, t: Math.random()*Math.PI*2 },
+    enemies,
+    door: { x: SCENE_W - 46, y: SCENE_H/2, w: 34, h: 74 },
+  };
+}
+
+// Enter a floor: build the room, then draft cards, then the battle begins.
+function enterRoom() {
+  buildRoom();
+  startDraft();
+}
+
+function stopScene() {
+  if (explore.raf) { cancelAnimationFrame(explore.raf); explore.raf = 0; }
+  if (explore.clickHandler && explore.canvas) {
+    explore.canvas.removeEventListener("click", explore.clickHandler);
+  }
+  explore.clickHandler = null; explore.canvas = null;
+}
+// kept for backward-compatible calls from render()
+function stopExplore() { stopScene(); }
+
+// Start (or restart) the animated scene for the given canvas element.
+function startScene(canvas) {
+  explore.canvas = canvas;
+  explore.ctx = canvas.getContext("2d");
+  // click an enemy on the canvas to target it
+  explore.clickHandler = (ev) => {
+    if (state.phase !== "answering") return;
+    const rect = canvas.getBoundingClientRect();
+    const mx = (ev.clientX - rect.left) * (canvas.width / rect.width);
+    const my = (ev.clientY - rect.top) * (canvas.height / rect.height);
+    let best = -1, bestD = 1e9;
+    state.room.enemies.forEach((e, i) => {
+      if (!e.alive) return;
+      const d = Math.hypot(mx - e.x, my - e.y);
+      if (d < e.size && d < bestD) { bestD = d; best = i; }
+    });
+    if (best >= 0) setTarget(best);
+  };
+  canvas.addEventListener("click", explore.clickHandler);
+  sceneLoop();
+}
+
+function sceneLoop() {
+  updateScene();
+  drawScene();
+  explore.raf = requestAnimationFrame(sceneLoop);
+}
+
+// A lunge is a quick out-and-back dash toward a point (an attack animation).
+// Nothing on the field moves unless it's attacking or being sent one.
+function startLunge(e, tx, ty, delay = 0) {
+  e.lunge = { homeX: e.x, homeY: e.y, tx, ty, phase: 0, delay };
+  if (state.room && e === state.room.player && Math.abs(tx - e.x) > 1) {
+    e.dir = tx > e.x ? 1 : -1;
+  }
+}
+function stepLunge(e) {
+  const L = e.lunge; if (!L) return;
+  if (L.delay > 0) { L.delay--; return; }
+  L.phase += 0.07;
+  const k = L.phase <= 1 ? L.phase : 2 - L.phase;   // 0 -> 1 -> 0 triangle
+  const px = L.homeX + (L.tx - L.homeX) * 0.55;
+  const py = L.homeY + (L.ty - L.homeY) * 0.55;
+  e.x = L.homeX + (px - L.homeX) * k;
+  e.y = L.homeY + (py - L.homeY) * k;
+  if (L.phase >= 2) { e.x = L.homeX; e.y = L.homeY; e.lunge = null; }
+}
+
+// The player sits still on the left side of the field and only moves to
+// throw an attack. Enemies stay put unless they are striking (or hit).
+function updateScene() {
+  const r = state.room; if (!r) return;
+  const p = r.player;
+
+  if (r.cleared && !p.lunge) {
+    // stroll toward the open door once the room is won
+    const gx = r.door.x - 40, gy = r.door.y;
+    const dx = gx - p.x, dy = gy - p.y;
+    const dist = Math.hypot(dx, dy) || 1;
+    if (dist > 1) {
+      const speed = Math.min(2.2, dist);
+      p.x += (dx/dist) * speed;
+      p.y += (dy/dist) * speed;
+      if (Math.abs(dx) > 1) p.dir = dx > 0 ? 1 : -1;
+    }
+  } else {
+    stepLunge(p);
+  }
+
+  r.enemies.forEach(e => { if (e.hitFlash > 0) e.hitFlash--; stepLunge(e); });
+}
+
+function drawScene() {
+  const ctx = explore.ctx; if (!ctx) return;
+  const r = state.room; if (!r) return;
+  const p = r.player;
+
+  // floor
+  ctx.fillStyle = "#141a30";
+  ctx.fillRect(0,0,SCENE_W,SCENE_H);
+  ctx.strokeStyle = "#1e2748"; ctx.lineWidth = 1;
+  for (let x=0; x<=SCENE_W; x+=40){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,SCENE_H); ctx.stroke(); }
+  for (let y=0; y<=SCENE_H; y+=40){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(SCENE_W,y); ctx.stroke(); }
+  // walls
+  ctx.fillStyle = "#2a3160";
+  ctx.fillRect(0,0,SCENE_W,14); ctx.fillRect(0,SCENE_H-14,SCENE_W,14);
+  ctx.fillRect(0,0,14,SCENE_H); ctx.fillRect(SCENE_W-14,0,14,SCENE_H);
+
+  // door
+  const d = r.door;
+  ctx.fillStyle = r.cleared ? "#2b5a34" : "#5a2b2b";
+  ctx.fillRect(d.x, d.y - d.h/2, d.w, d.h);
+  ctx.strokeStyle = r.cleared ? "#6bd968" : "#ff5d73";
+  ctx.lineWidth = 3;
+  ctx.strokeRect(d.x, d.y - d.h/2, d.w, d.h);
+  ctx.fillStyle = r.cleared ? "#6bd968" : "#ff5d73";
+  ctx.font = "20px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText(r.cleared ? "🔓" : "🔒", d.x + d.w/2, d.y);
+
+  // enemies
+  r.enemies.forEach((e, i) => {
+    if (!e.alive) return;
+    const oy = 0;  // enemies stay still except when attacking / hit
+    const isTarget = (i === state.target) && !r.cleared;
+    // target reticle
+    if (isTarget) {
+      ctx.strokeStyle = "#ffb347"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(e.x, e.y + oy, e.size*0.7, 0, Math.PI*2); ctx.stroke();
+    }
+    // hit flash tint
+    ctx.save();
+    if (e.hitFlash > 0) ctx.globalAlpha = 0.55 + 0.45*Math.sin(e.hitFlash);
+    ctx.font = e.size + "px sans-serif";
+    ctx.fillText(e.emoji, e.x, e.y + oy);
+    ctx.restore();
+    // nameplate
+    ctx.fillStyle = isTarget ? "#ffb347" : "#e8ecff";
+    ctx.font = "11px sans-serif";
+    ctx.fillText((e.isBoss?"👑 ":"") + e.name, e.x, e.y - e.size*0.6 - 12 + oy);
+    // mini HP bar
+    const bw = Math.max(34, e.size), bx = e.x - bw/2, by = e.y - e.size*0.6 - 6 + oy;
+    ctx.fillStyle = "#0c0f1c"; ctx.fillRect(bx, by, bw, 5);
+    ctx.fillStyle = e.isBoss ? "#c77dff" : "#ff5d73";
+    ctx.fillRect(bx, by, bw * (e.hp/e.maxHp), 5);
+  });
+
+  // player shadow + sprite
+  ctx.fillStyle = "rgba(0,0,0,.3)";
+  ctx.beginPath(); ctx.ellipse(p.x, p.y + 16, 12, 5, 0, 0, Math.PI*2); ctx.fill();
+  ctx.font = "30px sans-serif";
+  ctx.save();
+  if (p.dir < 0) { ctx.translate(p.x, p.y); ctx.scale(-1,1); ctx.fillText("🧑", 0, 0); }
+  else { ctx.fillText("🧑", p.x, p.y); }
+  ctx.restore();
+
+  ctx.textAlign = "start"; ctx.textBaseline = "alphabetic";
+}
+
+// ============================= RENDER =============================
+const app = document.getElementById("app");
+function render() {
+  stopScene();  // stop any running scene loop before drawing a new screen
+  switch(state.phase) {
+    case "menu":        return renderMenu();
+    case "difficulty":  return renderDifficulty();
+    case "draft":       return renderDraft();
+    case "roomclear":   return renderRoomClear();
+    case "victory":     return renderEnd(true);
+    case "lost":        return renderEnd(false);
+    case "leaderboard": return renderLeaderboard();
+    default:            return renderFight();
+  }
+}
+
+function renderMenu() {
+  app.innerHTML = `
+    <h1>🏰 Code Tower</h1>
+    <div class="sub">Choose a world to climb. Learn by answering deeply.</div>
+    <div class="panel">
+      <div class="world-grid">
+        ${Object.entries(WORLDS).map(([k,w])=>`
+          <div class="world" onclick="chooseWorld('${k}')">
+            <div class="wemoji">${w.emoji}</div>
+            <div class="wname">${w.name}</div>
+            <div class="wdesc">${w.desc}</div>
+          </div>`).join("")}
+      </div>
+    </div>
+    <div class="panel">
+      <h3>🏆 Leaderboard</h3>
+      ${lbTable(loadLB())}
+    </div>
+    <div class="sub">Cards drop by rarity: <span style="color:var(--common)">Common 50%</span> · <span style="color:var(--rare)">Rare 30%</span> · <span style="color:var(--epic)">Epic 20%</span>. Complete a tower for a 👑.</div>
+  `;
+}
+
+function chooseWorld(k){ state.pendingWorld = k; state.phase="difficulty"; render(); }
+
+function renderDifficulty() {
+  const w = WORLDS[state.pendingWorld];
+  app.innerHTML = `
+    <h1>${w.emoji} ${w.name}</h1>
+    <div class="sub">${w.desc} — pick a difficulty.</div>
+    <div class="panel center">
+      <div class="btn-row">
+        <button class="btn diff" onclick="beginRun('easy')">🟢 Easy<br><small class="muted">${DIFFICULTY.easy.floors} floors</small></button>
+        <button class="btn diff" onclick="beginRun('medium')">🟡 Medium<br><small class="muted">${DIFFICULTY.medium.floors} floors</small></button>
+        <button class="btn diff" onclick="beginRun('hard')">🔴 Hard<br><small class="muted">${DIFFICULTY.hard.floors} floors</small></button>
+      </div>
+      <div class="btn-row"><button class="btn" onclick="state.phase='menu'; render();">⬅ Back</button></div>
+    </div>
+  `;
+}
+function beginRun(diff){ newGame(state.pendingWorld, diff); enterRoom(); }
+
+function renderDraft() {
+  const w = currentRarityWeights();
+  app.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <h1 style="flex:1">${state.world.emoji} ${state.world.name}</h1>
+      <button class="btn diff" style="padding:8px 16px" onclick="exitToMenu()">❌ Exit</button>
+    </div>
+    <div class="sub">Floor ${state.stageIndex+1} / ${state.tower.length} · ${state.diff.label}</div>
+    <div class="panel center">
+      <h2>🎴 You received ${state.draftGranted.length} card${state.draftGranted.length===1?"":"s"}!</h2>
+      <p class="muted">Drop rates this floor: ${Math.round(w.common)}% common · ${Math.round(w.rare)}% rare · ${Math.round(w.epic)}% epic</p>
+      <div class="cards">
+        ${state.draftGranted.map(id=>{
+          const c = CARD_DEFS[id];
+          return `<div class="card draft ${c.rarity}">
+            <div class="rarity">${c.rarity}</div>
+            <div class="cname">${c.name}</div>
+            <div class="cdesc">${c.desc}</div>
+          </div>`;
+        }).join("")}
+      </div>
+      <p class="muted" style="margin-top:14px">Hand: ${handSummary()}</p>
+      <div class="btn-row"><button class="btn" onclick="continueFromDraft()">⚔️ Enter Floor</button></div>
+    </div>
+  `;
+}
+function handSummary(){ return state.hand.length ? state.hand.map(c=>CARD_DEFS[c.id].name).join(", ") : "empty"; }
+
+function renderFight() {
+  const s = currentStage();
+  const q = currentQuestion();
+  const tgt = targetEnemy();
+  const isFinal = state.stageIndex >= state.tower.length - 1;
+  app.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <h1 style="flex:1">${state.world.emoji} ${state.world.name}</h1>
+      <button class="btn diff" style="padding:8px 16px" onclick="exitToMenu()">❌ Exit</button>
+    </div>
+    <div class="sub">Floor ${state.stageIndex+1} / ${state.tower.length} · ${state.diff.label} · ${isFinal?"👑 Boss floor":aliveEnemies().length+" enemies"} · ${s.topic}</div>
+
+    <div class="panel explore-wrap">
+      <canvas id="scene" width="${SCENE_W}" height="${SCENE_H}"></canvas>
+    </div>
+
+    <div class="panel">
+      <div class="hp-label" style="margin-bottom:6px"><span>🎯 Choose your target${state.phase!=="answering"?" (locked)":""}</span></div>
+      <div class="targets">${renderTargets()}</div>
+    </div>
+
+    ${tgt ? `
+    <div class="statusbar">
+      <span class="stage-tag">${tgt.isBoss?"👑 ":""}${tgt.name}</span>
+      <div class="hp-wrap">
+        <div class="hp-label"><span>Target HP</span><span>${tgt.hp}/${tgt.maxHp}</span></div>
+        <div class="bar enemy-bar"><span style="width:${100*tgt.hp/tgt.maxHp}%"></span></div>
+      </div>
+    </div>` : ""}
+
+    <div class="statusbar">
+      <span class="stage-tag">🧑 You ${statusFlags()}</span>
+      <div class="hp-wrap">
+        <div class="hp-label"><span>Your HP</span><span>${state.playerHP}/${state.playerMax}</span></div>
+        <div class="bar player-bar"><span style="width:${100*state.playerHP/state.playerMax}%"></span></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="question">${questionText(q)}</div>
+      <div class="qhint">There may be 0–5 correct answers. Damage to your target = floor max (${floorMaxDamage()}) × (choices you handled correctly / ${q.options.length}).</div>
+      <div class="options">${q.options.map((o,i)=>renderOption(o,i)).join("")}</div>
+      ${state.phase==="answering" ? `
+        <div class="btn-row"><button class="btn" onclick="submitAnswer()" ${state.selected.size===0?"disabled":""}>⚔️ Attack!</button></div>
+        ${renderHand()}
+      ` : renderFeedback()}
+    </div>
+  `;
+  const canvas = document.getElementById("scene");
+  if (canvas) startScene(canvas);
+}
+
+// Clickable chips for every enemy in the room; pick who to attack.
+function renderTargets() {
+  const es = state.room ? state.room.enemies : [];
+  return es.map((e,i) => {
+    if (!e.alive) return `<div class="tchip dead">${e.emoji} ${e.name} ☠️</div>`;
+    const sel = i === state.target ? " sel" : "";
+    const click = state.phase==="answering" ? `onclick="setTarget(${i})"` : "";
+    return `<div class="tchip${sel}" ${click}>
+      <span>${e.isBoss?"👑 ":""}${e.emoji} ${e.name}</span>
+      <div class="bar enemy-bar tmini"><span style="width:${100*e.hp/e.maxHp}%"></span></div>
+    </div>`;
+  }).join("");
+}
+
+function renderRoomClear() {
+  const isFinal = state.stageIndex >= state.tower.length - 1;
+  app.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <h1 style="flex:1">${state.world.emoji} ${state.world.name}</h1>
+      <button class="btn diff" style="padding:8px 16px" onclick="exitToMenu()">❌ Exit</button>
+    </div>
+    <div class="sub">Floor ${state.stageIndex+1} / ${state.tower.length} · ${state.diff.label}</div>
+    <div class="panel explore-wrap">
+      <canvas id="scene" width="${SCENE_W}" height="${SCENE_H}"></canvas>
+      <div class="explore-hint">🚪 Room cleared! The door is open.</div>
+    </div>
+    <div class="panel center">
+      <div class="big">✅</div>
+      <h2>${isFinal?"Final chamber cleared!":"Room cleared!"}</h2>
+      <p class="muted">${isFinal?"The boss has fallen.":"All enemies defeated. Advance to the next floor."}</p>
+      <div class="btn-row"><button class="btn" onclick="advanceFloor()">${isFinal?"🏆 Finish":"⬆️ Next Floor (draft a card)"}</button></div>
+    </div>
+  `;
+  const canvas = document.getElementById("scene");
+  if (canvas) startScene(canvas);
+}
+
+function questionText(q) {
+  if (q.code) {
+    const parts = q.q.split("\n\n");
+    return `${escapeHtml(parts[0])}<div class="code">${escapeHtml(parts.slice(1).join("\n\n"))}</div>`;
+  }
+  return escapeHtml(q.q);
+}
+
+function statusFlags() {
+  const f=[];
+  if (state.critNext) f.push("⚔️1.5x");
+  if (state.doubleNext) f.push("💥2x");
+  if (state.dmgBonusNext) f.push("⚡+"+state.dmgBonusNext);
+  if (state.shieldNext) f.push('<span class="shield-tag">🛡️Shield</span>');
+  if (state.aegis>0) f.push('<span class="shield-tag">🛡️✨Aegis '+state.aegis+'</span>');
+  if (state.evadeTurns>0) f.push("🌫️Evade "+state.evadeTurns);
+  return f.length ? "· "+f.join(" ") : "";
+}
+
+function renderOption(o,i) {
+  if (state.removed.has(i))
+    return `<div class="opt" style="opacity:.25;text-decoration:line-through;cursor:default">${escapeHtml(o.t)}</div>`;
+  let cls = "opt";
+  if (state.phase === "answering") {
+    if (state.selected.has(i)) cls += " selected";
+    if (state.revealed.has(i)) cls += " correct";
+  } else {
+    if (o.correct && state.selected.has(i)) cls += " correct";
+    else if (!o.correct && state.selected.has(i)) cls += " wrong";
+    else if (o.correct && !state.selected.has(i)) cls += " missed";
+  }
+  const click = state.phase==="answering" ? `onclick="toggleOption(${i})"` : "";
+  return `<button class="${cls}" ${click}>${escapeHtml(o.t)}</button>`;
+}
+
+// Render the hand as a fanned arc, as if held by an invisible hand below.
+// Use the ◀ ▶ arrows (or keyboard) to bring a card to the front so it's
+// easy to pick out even when the hand is large and the cards overlap.
+function renderHand() {
+  const n = state.hand.length;
+  if (!n) return '<div class="hand-empty">No cards in hand.</div>';
+
+  if (state.handFocus == null || state.handFocus >= n) state.handFocus = n - 1;
+  if (state.handFocus < 0) state.handFocus = 0;
+  const focus = state.handFocus;
+
+  const spread = 14;                 // degrees between adjacent cards
+  const startAngle = -((n - 1) / 2) * spread;
+  const lift = 90;                   // px of vertical arc curvature
+
+  const cards = state.hand.map((c, i) => {
+    const def = CARD_DEFS[c.id];
+    const angle = startAngle + i * spread;
+    // horizontal fan: push cards left/right (wider spacing = easier to grab);
+    // vertical: dip toward the ends. Cards only rise on hover (CSS), never stay up.
+    const x = angle * 7.6;
+    const y = Math.abs(angle) * (lift / 90) * 0.9;   // ends sit slightly lower
+    const z = i;
+    // the keyboard-focused card just gets a subtle glow — it does NOT lift
+    const extra = (i === focus)
+      ? "box-shadow:0 10px 22px rgba(0,0,0,.45), 0 0 12px var(--accent);"
+      : "";
+    const vars = `--tx:${x}px; --ty:${y}px; --rot:${angle}deg;`;
+    return `<div class="hand-card ${def.rarity}${i===focus?' focused':''}" style="${vars} z-index:${z}; ${extra}"
+                 title="${escapeHtml(def.desc)}" onclick="useCard(${i})">
+      <div class="rarity">${def.rarity}</div>
+      <div class="cname">${def.name}</div>
+      <div class="cdesc">${def.desc}</div>
+    </div>`;
+  }).join("");
+
+  const nav = n > 1 ? `
+    <button class="hand-nav left"  onclick="handNav(-1)" title="Previous card">◀</button>
+    <button class="hand-nav right" onclick="handNav(1)"  title="Next card">▶</button>` : "";
+
+  const hint = n > 1
+    ? `hover a card to enlarge it · ◀ ▶ keys to browse · ${focus+1}/${n}`
+    : `hover then click the card to play`;
+
+  return `<div class="hand-fan">${nav}${cards}</div><div class="hand-hint">${hint}</div>`;
+}
+
+// Cycle the focused (front) card left/right.
+function handNav(d) {
+  const n = state.hand.length; if (!n) return;
+  state.handFocus = (((state.handFocus || 0) + d) % n + n) % n;
+  render();
+}
+
+function renderFeedback() {
+  const r = state.lastResult;
+  const good = r.score >= 0.75;
+  const perfect = r.correctDecisions === r.totalChoices;
+  let msg;
+  if (r.dmg === 0) msg = "❌ No damage this turn!";
+  else if (perfect) msg = "🌟 Perfect answer! Full damage!";
+  else if (good) msg = "✅ Strong answer!";
+  else msg = "⚠️ Partial answer.";
+
+  const b = r.boss;
+  const hitCount = b.attacks ? b.attacks.filter(a=>!a.missed).length : 0;
+  const missCount = b.attacks ? b.attacks.filter(a=>a.missed).length : 0;
+  let bossLine = "";
+  if (b.attacked) {
+    if (b.blocked) bossLine = "🛡️ Shield blocked all incoming attacks!";
+    else if (b.dmg === 0 && b.aegisAbsorb) bossLine = `🛡️✨ Aegis absorbed <b>${b.aegisAbsorb}</b> (no HP lost). Aegis left: ${state.aegis}`;
+    else if (b.dmg === 0 && hitCount === 0) bossLine = `💨 Every enemy <b>missed</b>!`;
+    else {
+      bossLine = `${hitCount} enem${hitCount===1?"y":"ies"} struck you for <b>${b.dmg}</b>`;
+      if (b.aegisAbsorb) bossLine += ` (🛡️✨ Aegis absorbed ${b.aegisAbsorb})`;
+      if (missCount) bossLine += ` · ${missCount} missed`;
+      bossLine += ".";
+    }
+  }
+  const killLine = r.killedName ? `💀 You defeated <b>${escapeHtml(r.killedName)}</b>!` : "";
+
+  return `
+    <div class="feedback ${good?"hit":"miss"}">
+      <div><b>${msg}</b></div>
+      <div>You got <b>${r.hits}/${r.totalCorrect}</b> correct${r.wrongPicks?`, with <b>${r.wrongPicks}</b> wrong pick(s)`:""}.</div>
+      <div>Damage to ${escapeHtml(r.targetName)}: <span class="dmg-pop">${r.dmg}</span>${killLine?"&nbsp;|&nbsp; "+killLine:""}</div>
+      ${bossLine?`<div>${bossLine}</div>`:""}
+      ${(r.mistakes && r.mistakes.length) ? `
+      <div class="review">
+        <div class="review-title">📝 Fix these to answer faster next time:</div>
+        ${r.mistakes.map(m=>`
+          <div class="review-item ${m.kind}">
+            <div class="review-head">
+              <span class="review-tag">${m.kind==="missed"?"✔ Missed correct":"✘ Wrong pick"}</span>
+              <span class="review-opt">${escapeHtml(m.text)}</span>
+            </div>
+            <div class="review-why">${m.why}</div>
+          </div>`).join("")}
+      </div>` : `<div class="review-perfect">✅ Every option handled correctly — nice and fast!</div>`}
+      <div class="teach">📘 <b>Learn:</b> ${r.teach}</div>
+    </div>
+    <div class="btn-row">
+      <button class="btn" onclick="nextAfterResolve()">➡️ Next Question</button>
+    </div>
+  `;
+}
+
+function renderEnd(won) {
+  app.innerHTML = `
+    <h1>${state.world.emoji} ${state.world.name}</h1>
+    <div class="panel center">
+      <div class="big">${won?"🏆👑":"💀"}</div>
+      <h2>${won?"You conquered the tower!":"You fell on floor "+(state.stageIndex+1)+"."}</h2>
+      <p class="muted">${won
+        ? `Cleared all ${state.tower.length} floors on ${state.diff.label} in ${state.totalAnswers} answers.`
+        : `Reached floor ${state.stageIndex+1} of ${state.tower.length} on ${state.diff.label}.`}</p>
+      <div style="margin:14px 0"><input class="name-input" id="pname" placeholder="Enter your name" maxlength="16" /></div>
+      <div class="btn-row">
+        <button class="btn" onclick="submitScore(document.getElementById('pname').value)">📝 Submit Score</button>
+        <button class="btn diff" onclick="state.phase='menu'; render();">🏠 Menu (skip)</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderLeaderboard() {
+  app.innerHTML = `
+    <h1>🏆 Leaderboard</h1>
+    <div class="panel">${lbTable(loadLB(), state.myEntryWhen)}</div>
+    <div class="btn-row"><button class="btn" onclick="state.phase='menu'; render();">🏠 Main Menu</button></div>
+  `;
+}
+
+function lbTable(lb, highlightWhen) {
+  if (!lb.length) return `<p class="muted">No scores yet — be the first to climb!</p>`;
+  const rows = lb.slice(0,15).map((e,i)=>{
+    const crown = e.completed ? "👑" : "";
+    const you = highlightWhen && e.when===highlightWhen ? "you" : "";
+    const prog = e.completed ? `Cleared (${e.totalFloors})` : `Floor ${e.floor}/${e.totalFloors}`;
+    return `<tr class="${you}">
+      <td>${i+1}</td><td>${crown} ${escapeHtml(e.name)}</td>
+      <td>${escapeHtml(e.world||"—")}</td><td>${e.difficulty}</td>
+      <td>${prog}</td><td>${e.answers}</td></tr>`;
+  }).join("");
+  return `<table class="lb">
+    <tr><th>#</th><th>Name</th><th>World</th><th>Difficulty</th><th>Progress</th><th>Answers</th></tr>
+    ${rows}</table>`;
+}
+function escapeHtml(s){ return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+
+// ---- exit to main menu (with confirm to avoid accidental resets) ----
+function exitToMenu() {
+  if (confirm("Exit to the main menu? Your current run will be lost.")) {
+    state = { phase:"menu" };
+    render();
+  }
+}
+
+// ---- keyboard: browse & play the hand during a fight ----
+document.addEventListener("keydown", (e) => {
+  if (state.phase !== "answering" || !state.hand || !state.hand.length) return;
+  if (e.key === "ArrowLeft")  { handNav(-1); e.preventDefault(); }
+  else if (e.key === "ArrowRight") { handNav(1); e.preventDefault(); }
+  else if (e.key === "Enter" || e.key === " ") {
+    const i = state.handFocus || 0;
+    if (state.hand[i]) { useCard(i); e.preventDefault(); }
+  }
+});
+
+// ---- boot ----
+state.phase = "menu";
+render();
+</script>
+</body>
+</html>

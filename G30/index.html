@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Socket Defense — Tower Defense for Socket Programming</title>
+<style>
+  :root{
+    --bg:#0b0f17;--panel:#141a24;--panel2:#1b2431;--line:#2a3444;
+    --text:#e6edf3;--muted:#8b97a7;--accent:#f59e0b;--good:#22c55e;--bad:#ef4444;--blue:#3b82f6;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+    background:radial-gradient(1200px 700px at 60% -10%,#16233d,var(--bg) 60%);color:var(--text);min-height:100vh}
+  header{text-align:center;padding:14px 10px 4px}
+  h1{margin:0;font-size:22px}h1 .i{color:var(--accent)}
+  .sub{color:var(--muted);font-size:13px}
+  .app{display:flex;gap:14px;max-width:1180px;margin:10px auto;padding:0 14px 40px;align-items:flex-start}
+  .stage{flex:0 0 auto}
+  #cv{background:#0e1420;border:1px solid var(--line);border-radius:12px;display:block;cursor:crosshair}
+  .hud{display:flex;gap:10px;justify-content:center;margin:8px 0;flex-wrap:wrap}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:6px 12px;font-size:13px}
+  .stat b{color:var(--accent)}
+  .stat.hp b{color:var(--good)} .stat.bad b{color:var(--bad)}
+  .side{flex:1;min-width:290px;max-width:340px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:12px}
+  .card h3{margin:0 0 8px;font-size:14px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+  .tower{display:flex;gap:10px;align-items:center;background:var(--panel2);border:1px solid var(--line);
+    border-radius:9px;padding:8px;margin-bottom:8px;cursor:pointer;transition:.12s}
+  .tower:hover{border-color:var(--accent);transform:translateY(-1px)}
+  .tower.sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+  .tower.locked{opacity:.45;cursor:not-allowed}
+  .tower .ic{width:34px;height:34px;border-radius:8px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-size:18px}
+  .tower .nm{font-family:"SF Mono",Consolas,monospace;font-weight:700;font-size:13px}
+  .tower .ds{font-size:11px;color:var(--muted);line-height:1.35}
+  .tower .cost{margin-left:auto;font-size:12px;color:var(--accent);font-weight:700;white-space:nowrap}
+  .info{font-size:12.5px;line-height:1.5;color:var(--text)}
+  .info .fn{font-family:monospace;color:var(--accent);font-weight:700}
+  .info .why{color:var(--muted);margin-top:6px}
+  .btn{background:var(--accent);color:#111;border:0;border-radius:9px;padding:10px 14px;font-weight:800;cursor:pointer;font-size:14px;width:100%}
+  .btn:disabled{opacity:.5;cursor:default}
+  .btn.ghost{background:transparent;border:1px solid var(--line);color:var(--text);width:auto;padding:7px 12px;font-size:12px}
+  .row{display:flex;gap:8px}
+  .msg{min-height:18px;font-size:12.5px;color:var(--accent);text-align:center}
+  .overlay{position:fixed;inset:0;background:rgba(6,9,14,.86);display:none;align-items:center;justify-content:center;z-index:100}
+  .overlay.show{display:flex}
+  .modal{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:28px 34px;text-align:center;max-width:440px}
+  .modal h2{margin:0 0 8px}
+  .modal.win h2{color:var(--good)} .modal.lose h2{color:var(--bad)}
+  .modal p{color:var(--muted);line-height:1.5}
+  kbd{background:#0d1117;border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:11px}
+</style>
+</head>
+<body>
+<header>
+  <h1>🛡️ <span class="i">Socket</span> Defense</h1>
+  <div class="sub">Each tower is a real socket call. The path is your request pipeline. Stop the malicious &amp; malformed requests before they crash your server.</div>
+</header>
+
+<div class="hud">
+  <div class="stat">⚡ CPU: <b id="money">150</b></div>
+  <div class="stat hp">❤ Server: <b id="lives">20</b></div>
+  <div class="stat" id="repStat">👍 Reputation: <b id="rep">100</b></div>
+  <div class="stat">🌊 Wave: <b id="wave">0</b> / <span id="waveMax">8</span></div>
+  <div class="stat">👾 Alive: <b id="alive">0</b></div>
+</div>
+
+<div class="app">
+  <div class="stage">
+    <canvas id="cv" width="780" height="468"></canvas>
+    <div class="msg" id="msg">Read the threat briefing, build the RIGHT socket call (wrong ones barely work!), then start the wave.</div>
+  </div>
+
+  <div class="side">
+    <div class="card">
+      <h3>Difficulty</h3>
+      <div class="row" id="diffRow"></div>
+      <div id="diffDesc" style="margin-top:8px;font-size:11px;color:var(--muted);line-height:1.4"></div>
+    </div>
+
+    <div class="card">
+      <h3>Socket Towers</h3>
+      <div id="towerList"></div>
+    </div>
+
+    <div class="card">
+      <h3 id="infoTitle">How it works</h3>
+      <div class="info" id="info">
+        <p>Hover/select a tower to see the socket function it represents and what it does.</p>
+        <div class="why">💡 Click a built tower to <b>upgrade</b> or <b>sell</b> it.</div>
+      </div>
+    </div>
+
+    <div class="card" id="previewCard">
+      <h3>🔮 Next Wave — Recon</h3>
+      <div class="info" id="preview"></div>
+    </div>
+
+    <div class="card">
+      <button class="btn" id="startBtn">▶ Start Wave 1</button>
+      <div class="row" style="margin-top:8px">
+        <button class="btn ghost" id="speedBtn">⏩ Speed: 1x</button>
+        <button class="btn ghost" id="resetBtn">↺ Reset</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="console">
+  <div class="modal" id="consoleModal" style="max-width:580px;text-align:left">
+    <h2 style="text-align:center">📨 Server Console — Handle the Request</h2>
+    <div id="conProgress" style="text-align:center;color:var(--muted);font-size:12px;margin-bottom:6px"></div>
+    <div style="height:9px;background:#0d1117;border:1px solid var(--line);border-radius:6px;overflow:hidden">
+      <div id="conTimerBar" style="height:100%;width:100%;background:var(--good);transition:width .1s linear"></div>
+    </div>
+    <div id="conTimeText" style="text-align:right;font-size:11px;color:var(--muted);margin:2px 0 8px"></div>
+    <div id="conServer" style="font-size:12px;color:var(--muted);background:var(--panel2);border-radius:8px;padding:8px 10px;margin-bottom:10px"></div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:3px">⬇️ raw bytes from recv() on the connection</div>
+    <div id="conReq" style="font-family:monospace;font-size:12px;background:#0d1117;border:1px solid var(--line);border-radius:8px;padding:10px;white-space:pre;overflow-x:auto"></div>
+    <div id="conParse" style="font-size:12px;margin:8px 0;color:var(--text)"></div>
+    <p style="font-weight:700;margin:6px 0">Which status line should send() return?</p>
+    <div id="conOptions" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+    <div id="conFeedback" style="min-height:20px;margin-top:10px;font-size:13px;line-height:1.45"></div>
+    <div style="font-size:11px;color:var(--muted);margin-top:8px;display:none" id="conRespLbl">⬆️ bytes your server writes back with send()</div>
+    <div id="conResponse" style="font-family:monospace;font-size:11px;background:#0d1117;border:1px solid var(--line);border-radius:8px;padding:10px;white-space:pre;overflow-x:auto;display:none;margin-top:4px;color:#7ee787"></div>
+    <div style="text-align:center;margin-top:12px"><button class="btn" id="conNext" style="width:auto;padding:9px 22px;display:none">Continue ▶</button></div>
+  </div>
+</div>
+
+<div class="overlay" id="brief">
+  <div class="modal" id="briefModal" style="max-width:500px;text-align:left">
+    <h2 id="bTitle" style="text-align:center"></h2>
+    <p id="bThreat" style="color:var(--text)"></p>
+    <div id="bNote" style="font-size:12.5px;color:var(--muted);background:var(--panel2);border-radius:8px;padding:10px;line-height:1.45"></div>
+    <p style="margin:14px 0 6px;font-weight:700">❓ Which socket call is the correct counter?</p>
+    <div id="bOptions" style="display:flex;flex-direction:column;gap:8px"></div>
+    <div id="bFeedback" style="min-height:20px;margin-top:10px;font-size:13px;text-align:center"></div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="modal" id="modal">
+    <h2 id="mTitle"></h2>
+    <p id="mBody"></p>
+    <button class="btn" id="mBtn" style="margin-top:14px;width:auto;padding:10px 22px">Play again</button>
+  </div>
+</div>
+
+<script>
+const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+const TILE=52, COLS=15, ROWS=9;
+
+/* ---------- PATHS (the request pipelines) ---------- */
+// PATH 0 carries legit users + threats. PATH 1 (opens wave 3) is THREAT-ONLY.
+const WAY  = [ {c:0,r:1},{c:12,r:1},{c:12,r:4},{c:2,r:4},{c:2,r:7},{c:14,r:7} ];
+const WAY2 = [ {c:14,r:0},{c:5,r:0},{c:5,r:3},{c:14,r:3},{c:14,r:7} ];
+const cx = c => c*TILE+TILE/2, cy = r => r*TILE+TILE/2;
+const waypts  = WAY.map(w=>({x:cx(w.c),y:cy(w.r)}));
+const waypts2 = WAY2.map(w=>({x:cx(w.c),y:cy(w.r)}));
+const PATHS = [waypts, waypts2];
+const PATH2_WAVE = 3; // second path becomes active from this wave on
+// mark path cells (for build blocking) from both routes
+const pathCells = new Set();
+function markPath(way){
+  for(let i=0;i<way.length-1;i++){
+    let a=way[i], b=way[i+1];
+    let dc=Math.sign(b.c-a.c), dr=Math.sign(b.r-a.r);
+    let c=a.c,r=a.r;
+    pathCells.add(c+','+r);
+    while(c!==b.c||r!==b.r){ c+=dc; r+=dr; pathCells.add(c+','+r); }
+  }
+}
+markPath(WAY); markPath(WAY2);
+
+/* ---------- TOWER TYPES = socket functions ---------- */
+// NOTE: tower colors are a SEPARATE palette from enemy colors on purpose —
+// hue never reveals which call counters which threat. You must reason from the concept.
+const TOWERS = {
+  accept:{ name:'accept()', icon:'🤝', color:'#6366f1', cost:50, unlock:1,
+    dmg:14, range:110, rate:0.7, aoe:0, slow:0,
+    code:'int conn = accept(sfd, (struct sockaddr*)&cli, &len);',
+    desc:'Cheap all-rounder — but accepts ANY connection (good OR bad).',
+    info:'accept() takes WHATEVER is next in the listen queue — it does NOT inspect the payload, so it cannot tell a real user from an attacker. It WILL hit legit users (false positives!). Cheap and steady, best where no real traffic flows: wave 1, or the threat-only second lane.',
+    why:'accept() only completes the handshake and hands you a new fd; validation is a separate step (recv). Blindly accepting everyone is why you still need to inspect before trusting.'},
+  recv:{ name:'recv()', icon:'🔎', color:'#14b8a6', cost:80, unlock:1, precise:true,
+    dmg:38, range:95, rate:1.3, aoe:0, slow:0,
+    code:'ssize_t n = recv(conn, buf, sizeof(buf), 0);',
+    desc:'Slow, heavy hitter. Inspects the payload — spares legit users.',
+    info:'recv() copies up to len bytes into your buffer and returns the count (0 = peer closed, -1 = error). Because it actually READS and validates the bytes, it tells attackers from real users — it never fires on legit requests (no false positives).',
+    why:'TCP is a byte stream, not messages: always check the return value and bounds-check the buffer. That bounds check is exactly what stops buffer overflows.'},
+  select:{ name:'select()', icon:'📡', color:'#eab308', cost:120, unlock:2,
+    dmg:10, range:100, rate:0.9, aoe:60, slow:0,
+    code:'select(nfds, &readfds, NULL, NULL, &tv);  // FD_ISSET(fd,&readfds)',
+    desc:'Area damage. Monitors MANY sockets at once.',
+    info:'select() watches a whole fd_set of descriptors and reports which are ready, so ONE thread serves thousands of sockets. In-game: area damage hitting every connection in a blast radius. WARNING: the blast hits legit users too.',
+    why:'FD_SET/FD_ISSET manage the set; nfds = highest fd + 1. poll()/epoll() are the modern, scalable versions of the same idea.'},
+  timeout:{ name:'setsockopt() timeout', icon:'⏱️', color:'#ec4899', cost:70, unlock:3,
+    dmg:4, range:120, rate:0.8, aoe:0, slow:0.5,
+    code:'setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));',
+    desc:'Slows enemies. Drops stalled/slow-loris connections.',
+    info:'Sets a receive timeout (struct timeval) so a blocking op fails instead of hanging forever. Slow-loris / stalled attackers get cut off — in-game this chills enemies to half speed. It never kills, so it causes no false positives.',
+    why:'struct timeval {tv_sec, tv_usec}. Timeouts are a core anti-DoS control: without one, a single slow client ties up a worker indefinitely.'},
+  close:{ name:'close()', icon:'✂️', color:'#64748b', cost:160, unlock:4,
+    dmg:80, range:130, rate:1.8, aoe:0, slow:0,
+    code:'close(fd);  // or shutdown(fd, SHUT_RDWR);',
+    desc:'Sniper. Terminates a malicious session hard.',
+    info:'close() sends a FIN, tears the connection down and returns the file descriptor to the OS. Massive single-target burst for bosses & tanks. Blunt: aim it at a real user and that\'s a wrongful disconnect (false positive).',
+    why:'Leaked fds exhaust the process table; sockets linger in TIME_WAIT. shutdown() closes one direction; close() releases the fd entirely.'},
+};
+
+/* ---------- ENEMY TYPES = threats ---------- */
+// strong = full damage (the conceptually correct call). ok = half. anything else = ~12% (RESISTED).
+const ENEMIES = {
+  syn:{ name:'SYN flood', color:'#f97316', hp:22, speed:70, reward:6, radius:9,
+        strong:['select'], ok:['timeout'],
+        note:'Floods the TCP 3-way handshake with SYNs, filling the listen() backlog queue with half-open connections. One-at-a-time accept()/recv() can never drain it — you must watch MANY fds at once.'},
+  malformed:{ name:'Malformed packet', color:'#a855f7', hp:45, speed:52, reward:9, radius:11,
+        strong:['recv'], ok:['close'],
+        note:'Garbage/oversized bytes. You must actually READ and validate the payload to reject it — no other call inspects the data.'},
+  scan:{ name:'Port scan', color:'#38bdf8', hp:16, speed:120, reward:7, radius:8,
+        strong:['timeout'], ok:['select'],
+        note:'Rapid connect() probes sweeping ports for anything open. Too fast to hit cleanly — a receive timeout (setsockopt SO_RCVTIMEO) drops the stalled probes so defenses can land.'},
+  overflow:{ name:'Buffer overflow', color:'#e11d48', hp:160, speed:38, reward:20, radius:15,
+        strong:['close','recv'], ok:[],
+        note:'An oversized payload aimed at an unchecked buffer. Either bounds-check the read with recv(sizeof(buf)) or tear the fd down with close(). Fast/area towers barely scratch it.'},
+  ddos:{ name:'DDoS controller', color:'#dc2626', hp:900, speed:34, reward:120, radius:22,
+        strong:['close'], ok:['recv'],
+        note:'BOSS botnet controller. The only real fix is to tear the malicious connection down: close().'},
+  legit:{ name:'Legitimate request', color:'#4ade80', hp:40, speed:60, reward:0, radius:10, legit:true,
+        strong:[], ok:[],
+        note:'A REAL user (e.g. a valid GET /). It MUST reach the server. Killing it is a FALSE POSITIVE that wrecks your reputation. Blunt tools (accept/select/close) hit it too — only recv() validation lets it pass safely.'},
+};
+
+/* ---------- WAVES ---------- */
+// counter = the socket call the briefing quiz requires; why = the concept it teaches.
+const WAVES = [
+  {t:'Malformed packets — streams of garbage/oversized bytes.', primary:'malformed', counter:'recv',
+   why:'To reject bad data you must READ it first. recv() pulls the bytes into a buffer so you can validate them; no other call ever looks at the payload.',
+   concept:'TCP delivers a raw byte STREAM, not tidy messages. A read yields a byte count (0 = peer closed, -1 = error) — you must actually inspect and validate the payload before trusting it. (No real users yet — safe to use the blunt, cheap accept() here.)',
+   spawn:[['malformed',9,0.7]]},
+  {t:'SYN flood — a swarm of half-open connections.', primary:'syn', counter:'select',
+   why:'A flood means huge numbers of simultaneous sockets. select() monitors many descriptors at once (area damage). accept()/recv() handle one client at a time and get overrun.',
+   concept:'A SYN flood fills the listen(backlog) queue with half-open connections from the TCP 3-way handshake (SYN → SYN/ACK → ACK).',
+   spawn:[['syn',14,0.45],['malformed',4,0.6],['legit',4,1.0]]},
+  {t:'Port scanners — fast probes MIXED WITH real users. Watch your filtering!', primary:'scan', counter:'timeout',
+   why:'Scanners are too fast for towers to hit cleanly. settimeout() slows/drops the connections so your defenses can actually land shots.',
+   concept:'A blocking socket op can hang forever on a stalled peer. Production servers bound how long an operation may wait (a struct timeval limit) so slow/slow-loris connections get dropped instead of tying up a worker.',
+   spawn:[['scan',12,0.4],['legit',6,0.7],['syn',6,0.5],['syn',8,0.5,1]]},
+  {t:'Buffer overflow — an oversized-payload tank.', primary:'overflow', counter:'close',
+   why:'A giant malicious payload cannot be nibbled down. Terminate the whole connection with close() (or bounds-check with recv()). Fast/area towers barely scratch it.',
+   concept:'A classic overflow writes an oversized payload into a fixed-size buffer with no bounds check. The fixes: bound the read against sizeof(buf), or tear the whole malicious connection down.',
+   spawn:[['overflow',3,1.6],['syn',10,0.4],['legit',5,1.1],['malformed',6,0.6,1]]},
+  {t:'Mixed flood — scans + half-open connections, real users caught in the middle.', primary:'syn', counter:'select',
+   why:'When many connections arrive at once, multiplexing with select() is the scalable answer — but its AoE will nuke legit users! Use recv() to protect real traffic.',
+   concept:'Serving thousands of simultaneous connections in one thread means watching MANY file descriptors at once (an fd_set with FD_SET/FD_ISSET, nfds = highest fd + 1) rather than blocking on a single client.',
+   spawn:[['scan',12,0.35],['legit',6,0.7],['syn',16,0.3],['scan',8,0.45,1]]},
+  {t:'Armored wave — overflows + malformed, plus paying customers you must serve.', primary:'overflow', counter:'recv',
+   why:'The tanks need deep inspection: recv() bounds-checks the oversized payload, shreds the malformed escorts, AND spares the legit users. Close() finishes stragglers (but never aim it at real traffic).',
+   concept:'Each peer is identified by a struct sockaddr_in { sin_family=AF_INET, sin_port=htons(port), sin_addr }. htons() fixes byte order.',
+   spawn:[['legit',6,0.8],['malformed',10,0.5],['overflow',4,1.3],['overflow',2,1.8,1],['syn',8,0.5,1]]},
+  {t:'Heavy flood — the botnet warms up.', primary:'syn', counter:'select',
+   why:'Pure scale. select() handling many sockets at once is the only thing that keeps pace with the flood.',
+   concept:'accept() returns a FRESH fd per client while the listening fd keeps queuing — that separation is what lets one server scale.',
+   spawn:[['syn',24,0.26],['scan',12,0.35],['malformed',6,0.5],['legit',6,0.7],['syn',12,0.35,1]]},
+  {t:'FINAL: the DDoS controller and its botnet — real users still need serving!', primary:'ddos', counter:'close',
+   why:'Kill the head: close() tears down the controller connection. Keep select() thinning the botnet and recv() protecting the legit users mixed into the swarm.',
+   concept:'Ending a connection sends a FIN to the peer and returns its file descriptor to the OS. Leaked fds exhaust the process table; ports linger in TIME_WAIT afterward.',
+   spawn:[['legit',5,0.9],['syn',20,0.3],['overflow',4,1.2],['ddos',1,0.1],['overflow',3,1.4,1],['syn',12,0.35,1]]},
+];
+
+/* ---------- HTTP REQUEST HANDLING (the response side of the socket) ---------- */
+const FILES=['/', '/index.html', '/about.html', '/style.css', '/logo.png'];
+const STATUS={200:'OK',400:'Bad Request',403:'Forbidden',404:'Not Found',405:'Method Not Allowed'};
+const STATUS_OPTS=['200','404','405','403','400'];
+const REQUESTS=[
+ {line:'GET /index.html HTTP/1.1', method:'GET', path:'/index.html', correct:'200',
+  why:'GET is allowed and /index.html exists in the web root, so send the file with 200 OK.'},
+ {line:'GET /dashboard.html HTTP/1.1', method:'GET', path:'/dashboard.html', correct:'404',
+  why:'GET is fine, but /dashboard.html is not in the web root — respond 404 Not Found.'},
+ {line:'POST /index.html HTTP/1.1', method:'POST', path:'/index.html', correct:'405',
+  why:'The file exists, but this read-only static server supports GET/HEAD only. POST → 405 Method Not Allowed (send an Allow: GET header).'},
+ {line:'GET /../../etc/passwd HTTP/1.1', method:'GET', path:'/../../etc/passwd', correct:'403',
+  why:'The ".." sequences try to escape the web root — a path-traversal attack. Reject it → 403 Forbidden. Never serve files outside your document root.'},
+ {line:'GET / HTTP/1.1', method:'GET', path:'/', correct:'200',
+  why:'A request for "/" maps to the default document (index.html), which exists → 200 OK.'},
+ {line:'DELETE /about.html HTTP/1.1', method:'DELETE', path:'/about.html', correct:'405',
+  why:'DELETE is not supported by this read-only static server → 405 Method Not Allowed.'},
+ {line:'GET HTTP/1.1', method:'GET', path:null, correct:'400',
+  why:'The request line is malformed: it has no target (should be METHOD SP PATH SP VERSION). Unparseable → 400 Bad Request.'},
+ {line:'GET /style.css HTTP/1.1', method:'GET', path:'/style.css', correct:'200',
+  why:'GET is allowed and /style.css exists → 200 OK with Content-Type: text/css.'},
+];
+let consoleQueue=[], consoleIndex=0, consoleOnDone=null;
+let conTimer=null, conRemaining=0, conLimit=0;
+
+function nextRequest(){ const r=REQUESTS[reqPtr%REQUESTS.length]; reqPtr++; return r; }
+function ctypeFor(path){
+  if(!path||path==='/'||path.endsWith('.html')) return 'text/html; charset=utf-8';
+  if(path.endsWith('.css')) return 'text/css; charset=utf-8';
+  if(path.endsWith('.png')) return 'image/png';
+  return 'application/octet-stream';
+}
+function buildResponse(req){
+  const code=+req.correct, reason=STATUS[code];
+  if(code===200){
+    const ct=ctypeFor(req.path);
+    const body = ct.startsWith('text/html') ? '<!doctype html><title>Home</title><h1>It works!</h1>'
+              : ct.startsWith('text/css') ? 'body{font-family:sans-serif;margin:2rem}'
+              : '…(binary data)…';
+    return 'HTTP/1.1 200 OK\nContent-Type: '+ct+'\nContent-Length: '+body.length+'\nConnection: close\n\n'+body;
+  }
+  const body=code+' '+reason;
+  const extra = code===405 ? 'Allow: GET, HEAD\n' : '';
+  return 'HTTP/1.1 '+code+' '+reason+'\n'+extra+'Content-Type: text/plain\nContent-Length: '+body.length+'\nConnection: close\n\n'+body;
+}
+function openConsole(list,onDone,limit){
+  consoleQueue=list; consoleIndex=0; consoleOnDone=onDone; conLimit=limit;
+  document.getElementById('conServer').innerHTML='🗂️ Web root: '+FILES.map(f=>'<code>'+f+'</code>').join(' ')+' · Allowed methods: <b>GET, HEAD</b> only';
+  document.getElementById('console').classList.add('show');
+  renderConsoleReq();
+}
+function stopConTimer(){ if(conTimer){ clearInterval(conTimer); conTimer=null; } }
+function updateTimerBar(){
+  const pct=Math.max(0,conRemaining/conLimit*100);
+  const bar=document.getElementById('conTimerBar');
+  bar.style.width=pct+'%';
+  bar.style.background = pct<30?'var(--bad)':pct<60?'var(--accent)':'var(--good)';
+  document.getElementById('conTimeText').textContent='⏱ '+conRemaining.toFixed(1)+'s to send() a response';
+}
+function startConTimer(){
+  stopConTimer(); conRemaining=conLimit; updateTimerBar();
+  conTimer=setInterval(()=>{
+    conRemaining-=0.1;
+    if(conRemaining<=0){ conRemaining=0; updateTimerBar(); stopConTimer(); onConsoleTimeout(); }
+    else updateTimerBar();
+  },100);
+}
+function renderConsoleReq(){
+  const req=consoleQueue[consoleIndex];
+  document.getElementById('conProgress').textContent='Request '+(consoleIndex+1)+' of '+consoleQueue.length+' — respond before the client gives up ('+conLimit.toFixed(0)+'s)';
+  document.getElementById('conReq').textContent=req.line+'\nHost: 127.0.0.1:8080\nUser-Agent: curl/8.4.0\nAccept: */*\n';
+  document.getElementById('conParse').innerHTML='Parsed request line → Method: <b style="color:#4ade80">'+escapeHtml(req.method)+'</b> · Target: '+(req.path?('<b style="color:#7dd3fc">'+escapeHtml(req.path)+'</b>'):'<b style="color:#ef4444">⟨missing⟩</b>')+' · Version: <span style="color:var(--muted)">HTTP/1.1</span>';
+  const box=document.getElementById('conOptions'); box.innerHTML='';
+  STATUS_OPTS.forEach(k=>{
+    const b=document.createElement('button'); b.className='btn ghost'; b.style.padding='8px 12px';
+    b.textContent=k+' '+STATUS[+k];
+    b.onclick=()=>answerConsole(k,b);
+    box.appendChild(b);
+  });
+  document.getElementById('conFeedback').textContent='';
+  document.getElementById('conResponse').style.display='none';
+  document.getElementById('conRespLbl').style.display='none';
+  document.getElementById('conNext').style.display='none';
+  startConTimer();
+}
+function finishConsoleItem(req){
+  const resp=document.getElementById('conResponse');
+  document.getElementById('conRespLbl').style.display='block';
+  resp.style.display='block'; resp.textContent=buildResponse(req);
+  if(rep<=0){ stopConTimer(); document.getElementById('console').classList.remove('show'); endGame(false,'Too many mishandled or timed-out responses drove your users away. A real server must parse each request (method + path) and send() the right status FAST — 200, 404, 405, 403 or 400 — before the client gives up.'); return; }
+  document.getElementById('conNext').style.display='inline-block';
+}
+function onConsoleTimeout(){
+  const req=consoleQueue[consoleIndex];
+  [...document.getElementById('conOptions').children].forEach(b=>{ b.disabled=true; if(b.textContent.indexOf(req.correct)===0) b.style.borderColor='var(--good)'; });
+  rep=Math.max(0,rep-10); updateHUD();
+  const fb=document.getElementById('conFeedback');
+  fb.style.color='var(--bad)'; fb.innerHTML='⏱ Timed out — the client closed the connection before you sent a response. Correct was <b>'+req.correct+' '+STATUS[+req.correct]+'</b>. '+req.why+' <b>(−10 Reputation)</b>';
+  finishConsoleItem(req);
+}
+function answerConsole(k,btn){
+  stopConTimer();
+  const req=consoleQueue[consoleIndex];
+  [...document.getElementById('conOptions').children].forEach(b=>b.disabled=true);
+  const fb=document.getElementById('conFeedback');
+  if(k===req.correct){
+    money+=8; rep=Math.min(100,rep+3); updateHUD();
+    btn.style.borderColor='var(--good)';
+    fb.style.color='var(--good)'; fb.innerHTML='✓ Correct — '+req.why+' <b>(+8 CPU, +3 Reputation)</b>';
+  } else {
+    rep=Math.max(0,rep-10); updateHUD();
+    btn.style.borderColor='var(--bad)';
+    [...document.getElementById('conOptions').children].forEach(b=>{ if(b.textContent.indexOf(req.correct)===0) b.style.borderColor='var(--good)'; });
+    fb.style.color='var(--bad)'; fb.innerHTML='✗ '+k+' '+STATUS[+k]+' is wrong. '+req.why+' <b>(−10 Reputation)</b>';
+  }
+  finishConsoleItem(req);
+}
+
+/* ---------- DIFFICULTY ---------- */
+const DIFF = {
+  Normal:    {hp:1.0,  spd:1.0,  lives:20, money:150, salvage:0.5,  grant:1.0,  resist:0.12, time:1.0 },
+  Hard:      {hp:1.45, spd:1.15, lives:14, money:130, salvage:0.4,  grant:0.8,  resist:0.07, time:0.8 },
+  Nightmare: {hp:2.0,  spd:1.3,  lives:10, money:110, salvage:0.3,  grant:0.65, resist:0.04, time:0.65},
+};
+let diff = DIFF.Normal;
+function renderDiff(){
+  const row=document.getElementById('diffRow'); row.innerHTML='';
+  for(const name in DIFF){
+    const b=document.createElement('button'); b.className='btn ghost'; b.style.flex='1'; b.style.padding='7px 4px';
+    b.textContent=name;
+    if(DIFF[name]===diff){ b.style.borderColor='var(--accent)'; b.style.color='var(--accent)'; }
+    b.onclick=()=>{ diff=DIFF[name]; reset(); };
+    row.appendChild(b);
+  }
+  document.getElementById('diffDesc').textContent =
+    'Lives '+diff.lives+' · start ⚡'+diff.money+' · salvage '+(diff.salvage*100)+'% · wrong-tower dmg '+Math.round(diff.resist*100)+'% · enemy HP ×'+diff.hp+' · reply timer ×'+diff.time;
+}
+
+/* ---------- STATE ---------- */
+let money, lives, waveNum, enemies, towers, projectiles, floaters, texts,
+    selectedType, selectedTower, spawnQueue, spawnTimer, waveActive, speed, lastT, gameOver;
+
+let rep, pendingRequests, reqPtr, fpFlash=0;
+function reset(){
+  money=diff.money; lives=diff.lives; rep=100; waveNum=0; enemies=[]; towers=[]; projectiles=[]; floaters=[]; texts=[];
+  selectedType=null; selectedTower=null; spawnQueue=[]; spawnTimer=0; waveActive=false; speed=1;
+  gameOver=false; pendingRequests=[]; reqPtr=0; fpFlash=0; stopConTimer(); renderDiff();
+  document.getElementById('overlay').classList.remove('show');
+  document.getElementById('brief').classList.remove('show');
+  document.getElementById('console').classList.remove('show');
+  document.getElementById('startBtn').disabled=false;
+  updateHUD(); renderTowerList(); setInfoDefault(); renderPreview();
+  document.getElementById('startBtn').textContent='⭐ Prep Wave 1';
+}
+
+function renderPreview(){
+  const el=document.getElementById('preview');
+  if(waveNum>=WAVES.length){ el.innerHTML='<p>✅ All waves cleared — no further threats detected.</p>'; return; }
+  const w=WAVES[waveNum];
+  const hasLegit = w.spawn.some(s=>s[0]==='legit');
+  const hasP2 = w.spawn.some(s=>s[3]===1);
+  const types=[...new Set(w.spawn.map(s=>s[0]))];
+  const chips=types.map(k=>`<span style="display:inline-block;background:${ENEMIES[k].color}22;color:${ENEMIES[k].color};border-radius:10px;padding:1px 8px;font-size:11px;margin:2px 3px 0 0">${ENEMIES[k].name}</span>`).join('');
+  el.innerHTML=`<p style="margin:0 0 4px"><b>Wave ${waveNum+1}:</b> ${w.t}</p>
+    <div style="margin:4px 0">${chips}</div>
+    <div class="why">💡 ${ENEMIES[w.primary].note}</div>
+    ${w.concept?`<div class="why" style="margin-top:6px;color:#7dd3fc">📘 Socket concept: ${escapeHtml(w.concept)}</div>`:''}
+    ${hasLegit?'<div class="why" style="color:#4ade80;margin-top:6px">⚠️ Legit users inbound — <b>every one that reaches your server becomes an HTTP request you must answer</b> after the wave (under a shrinking timer). Don\'t let AoE/blunt towers kill them; recv() filters precisely.</div>':''}
+    ${hasP2?'<div class="why" style="color:#f59e0b;margin-top:6px">🛣️ <b>Second lane active</b> (top-right entry) — it carries THREATS ONLY, no real users. Cheap/blunt towers like accept(), select() and close() are safe to spam there.</div>':''}
+    <div class="why" style="margin-top:6px">Board clears each wave — spend your CPU on a defense built for THIS attack, then hit <b>Prep Wave</b>.</div>`;
+}
+function escapeHtml(s){return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+
+/* ---------- UI ---------- */
+function renderTowerList(){
+  const list=document.getElementById('towerList'); list.innerHTML='';
+  for(const key in TOWERS){
+    const t=TOWERS[key];
+    const unlocked = waveNum>=t.unlock-1;
+    const div=document.createElement('div');
+    div.className='tower'+(selectedType===key?' sel':'')+(unlocked?'':' locked');
+    div.innerHTML=`<div class="ic" style="background:${t.color}22;color:${t.color}">${t.icon}</div>
+      <div><div class="nm" style="color:${t.color}">${t.name}</div><div class="ds">${unlocked?t.desc:'🔒 Unlocks at wave '+t.unlock}</div></div>
+      <div class="cost">⚡${t.cost}</div>`;
+    div.onmouseenter=()=>showInfo(key);
+    div.onclick=()=>{ if(!unlocked) return; selectedType=key; selectedTower=null; renderTowerList(); showInfo(key); };
+    list.appendChild(div);
+  }
+}
+function showInfo(key){
+  const t=TOWERS[key];
+  document.getElementById('infoTitle').textContent=t.name;
+  document.getElementById('info').innerHTML=
+    `<p><span class="fn">${t.name}</span> — ${t.info}</p>
+     <div style="font-family:monospace;font-size:11px;color:#7ee787;background:#0d1117;border:1px solid var(--line);border-radius:6px;padding:6px 8px;margin:6px 0;overflow-x:auto;white-space:nowrap">${escapeHtml(t.code)}</div>
+     <div class="why">🔎 ${t.why}</div>
+     <div class="why" style="margin-top:6px">DMG ${t.dmg} · Range ${t.range} · ${t.aoe?'AoE '+t.aoe+' · ':''}${t.slow?'Slow '+(t.slow*100)+'% · ':''}Cost ⚡${t.cost}</div>`;
+}
+function setInfoDefault(){
+  document.getElementById('infoTitle').textContent='How it works';
+  document.getElementById('info').innerHTML=
+    `<p>Build towers on green tiles. Enemies are <b>malicious/malformed requests</b> traveling your pipeline toward the server core.</p>
+     <div class="why">⚠️ <b>The wrong call barely works.</b> Each threat is only stopped by the correct socket function — wrong choices deal ~12% damage (🛡) and the request reaches your server.</div>
+     <div class="why" style="margin-top:6px;color:#4ade80">✓ <b>Green requests are REAL users</b> — each one that reaches the server becomes an HTTP request you must parse &amp; answer in the Server Console (with a per-wave response deadline). Killing one is a <b>false positive</b> that drains Reputation. Only recv() filters precisely; select()/close()/accept() hit everyone.</div>
+     <div class="why" style="margin-top:6px;color:#7dd3fc">🔄 The board <b>clears after every wave</b>: you salvage only <b>50%</b> of what you built, plus a fresh grant — so overbuilding wastes CPU. Rebuild a defense tailored to each attack. Tower colors are NOT matched to enemies: reason from the concept, not the hue.</div>`;
+}
+function showTowerPanel(tw){
+  const t=TOWERS[tw.type];
+  const upCost=Math.round(t.cost*0.8*tw.level);
+  document.getElementById('infoTitle').textContent=t.name+' · Lv '+tw.level;
+  document.getElementById('info').innerHTML=
+    `<p><span class="fn">${t.name}</span> — ${t.info}</p>
+     <div style="font-family:monospace;font-size:11px;color:#7ee787;background:#0d1117;border:1px solid var(--line);border-radius:6px;padding:6px 8px;margin:6px 0;overflow-x:auto;white-space:nowrap">${escapeHtml(t.code)}</div>
+     <div class="why">DMG ${Math.round(tw.dmg)} · Range ${Math.round(tw.range)} · Lv ${tw.level}</div>
+     <div class="row" style="margin-top:8px">
+       <button class="btn ghost" id="upBtn">⬆ Upgrade ⚡${upCost}</button>
+       <button class="btn ghost" id="sellBtn">💰 Sell ⚡${Math.round(tw.invested*0.6)}</button>
+     </div>`;
+  document.getElementById('upBtn').onclick=()=>{
+    if(money>=upCost){ money-=upCost; tw.level++; tw.dmg*=1.4; tw.range+=12; tw.invested+=upCost; updateHUD(); showTowerPanel(tw);}
+    else flash('Not enough CPU to upgrade.');
+  };
+  document.getElementById('sellBtn').onclick=()=>{
+    money+=Math.round(tw.invested*0.6); towers=towers.filter(x=>x!==tw); selectedTower=null; updateHUD(); setInfoDefault();
+  };
+}
+function updateHUD(){
+  document.getElementById('money').textContent=money;
+  const l=document.getElementById('lives'); l.textContent=lives;
+  l.parentElement.className='stat hp'+(lives<=5?' bad':'');
+  document.getElementById('rep').textContent=rep;
+  document.getElementById('repStat').className='stat'+(rep<=30?' bad':'');
+  document.getElementById('wave').textContent=waveNum;
+  document.getElementById('alive').textContent=enemies.length;
+}
+function flash(m){ document.getElementById('msg').textContent=m; }
+
+/* ---------- BUILD ---------- */
+cv.addEventListener('click', e=>{
+  const r=cv.getBoundingClientRect();
+  const x=e.clientX-r.left, y=e.clientY-r.top;
+  const c=Math.floor(x/TILE), row=Math.floor(y/TILE);
+  // click existing tower?
+  const hit=towers.find(t=>Math.hypot(t.x-x,t.y-y)<20);
+  if(hit){ selectedTower=hit; selectedType=null; renderTowerList(); showTowerPanel(hit); return; }
+  if(!selectedType){ flash('Select a tower type first.'); return; }
+  if(c<0||c>=COLS||row<0||row>=ROWS){ return; }
+  if(pathCells.has(c+','+row)){ flash('Cannot build on the request path.'); return; }
+  if(towers.some(t=>t.c===c&&t.r===row)){ flash('A tower is already here.'); return; }
+  const t=TOWERS[selectedType];
+  if(money<t.cost){ flash('Not enough CPU. Kill more requests!'); return; }
+  money-=t.cost;
+  towers.push({type:selectedType, c, r:row, x:cx(c), y:cy(row), dmg:t.dmg, range:t.range,
+    rate:t.rate, cd:0, aoe:t.aoe, slow:t.slow, color:t.color, level:1, invested:t.cost});
+  updateHUD();
+});
+cv.addEventListener('mousemove', e=>{
+  const r=cv.getBoundingClientRect(); hoverX=e.clientX-r.left; hoverY=e.clientY-r.top;
+});
+let hoverX=-1,hoverY=-1;
+
+/* ---------- WAVE CONTROL ---------- */
+document.getElementById('startBtn').onclick=openBriefing;
+
+function openBriefing(){
+  if(waveActive||gameOver||waveNum>=WAVES.length) return;
+  const w=WAVES[waveNum];
+  document.getElementById('bTitle').textContent='🌊 Wave '+(waveNum+1)+' — Threat Briefing';
+  document.getElementById('bThreat').innerHTML='<b style="color:'+ENEMIES[w.primary].color+'">'+ENEMIES[w.primary].name+'</b> — '+w.t;
+  const hasLegit = w.spawn.some(s=>s[0]==='legit');
+  document.getElementById('bNote').innerHTML='💡 '+ENEMIES[w.primary].note+
+    (w.concept?'<br><br><span style="color:#7dd3fc">📘 '+escapeHtml(w.concept)+'</span>':'')+
+    (hasLegit?'<br><br><span style="color:#4ade80">⚠️ This wave includes <b>legitimate users</b> — don\'t let blunt towers (accept/select/close) kill them (false positives cost Reputation). recv() filters safely.</span>':'');
+  const fb=document.getElementById('bFeedback'); fb.textContent=''; fb.style.color='var(--bad)';
+  const box=document.getElementById('bOptions'); box.innerHTML='';
+  for(const key in TOWERS){
+    if(waveNum < TOWERS[key].unlock-1) continue; // only unlocked calls
+    const t=TOWERS[key];
+    const b=document.createElement('button'); b.className='btn ghost'; b.style.width='100%'; b.style.textAlign='left';
+    b.innerHTML=t.icon+' <b style="color:'+t.color+'">'+t.name+'</b> — <span style="color:var(--muted);font-size:12px">'+t.desc+'</span>';
+    b.onclick=()=>answerBriefing(key,b);
+    box.appendChild(b);
+  }
+  document.getElementById('brief').classList.add('show');
+}
+function answerBriefing(key,btn){
+  const w=WAVES[waveNum]; const fb=document.getElementById('bFeedback');
+  if(key===w.counter){
+    money+=40; updateHUD();
+    fb.style.color='var(--good)';
+    fb.textContent='✓ Correct! '+w.why.split('.')[0]+'.  (+40 CPU)';
+    document.getElementById('brief').classList.remove('show');
+    setTimeout(startWave,200);
+  } else {
+    money=Math.max(0,money-20); updateHUD();
+    btn.style.borderColor='var(--bad)'; btn.disabled=true; btn.style.opacity='.5';
+    fb.style.color='var(--bad)';
+    fb.innerHTML='✗ <b>'+TOWERS[key].name+'</b> wastes CPU cycles here (−20 CPU). '+w.why+' — <i>try again.</i>';
+  }
+}
+
+function startWave(){
+  if(waveActive||gameOver) return;
+  if(waveNum>=WAVES.length) return;
+  const w=WAVES[waveNum];
+  // Each path runs on its own timeline so the two lanes attack simultaneously.
+  spawnQueue=[]; const acc={0:0,1:0};
+  w.spawn.forEach(([type,count,gap,p])=>{
+    const path=p||0;
+    for(let i=0;i<count;i++){ spawnQueue.push({type, at:acc[path], path}); acc[path]+=gap; }
+  });
+  spawnQueue.sort((a,b)=>a.at-b.at);
+  spawnTimer=0; waveActive=true; waveNum++;
+  updateHUD(); renderTowerList();
+  flash('🌊 Wave '+waveNum+': '+WAVES[waveNum-1].t+' — use the counter you identified!');
+  document.getElementById('startBtn').disabled=true;
+  document.getElementById('startBtn').textContent='Wave in progress…';
+}
+document.getElementById('speedBtn').onclick=function(){
+  speed = speed===1?2:(speed===2?3:1);
+  this.textContent='⏩ Speed: '+speed+'x';
+};
+document.getElementById('resetBtn').onclick=reset;
+document.getElementById('mBtn').onclick=reset;
+document.getElementById('conNext').onclick=()=>{
+  stopConTimer();
+  consoleIndex++;
+  if(consoleIndex>=consoleQueue.length){
+    document.getElementById('console').classList.remove('show');
+    const cb=consoleOnDone; consoleOnDone=null; if(cb) cb();
+  } else renderConsoleReq();
+};
+
+/* ---------- LOOP ---------- */
+function spawnEnemy(type, pathId){
+  const e=ENEMIES[type];
+  pathId = pathId||0;
+  const path=PATHS[pathId];
+  // scale threat HP by difficulty and wave number; legit users stay at base so FP risk holds
+  const hpScale = e.legit ? 1 : diff.hp*(1+0.06*(waveNum-1));
+  const hp = Math.round(e.hp*hpScale);
+  enemies.push({type, pathId, x:path[0].x, y:path[0].y, wp:1, hp, maxhp:hp,
+    speed:e.speed*diff.spd, radius:e.radius, color:e.color, reward:e.reward, slowT:0, legit:!!e.legit});
+}
+function update(dt){
+  if(gameOver) return;
+  // spawns
+  if(waveActive){
+    spawnTimer+=dt;
+    while(spawnQueue.length && spawnQueue[0].at<=spawnTimer){ const s=spawnQueue.shift(); spawnEnemy(s.type, s.path); }
+    if(spawnQueue.length===0 && enemies.length===0){
+      waveActive=false;
+      // Board clears each wave: PARTIAL refund (decommissioned, not resold) + a fresh grant.
+      const SALVAGE=diff.salvage;
+      let refund=0; for(const t of towers) refund+=t.invested;
+      refund=Math.round(refund*SALVAGE);
+      towers=[]; projectiles=[]; selectedTower=null; selectedType=null;
+      const grant = Math.round((90 + waveNum*35)*diff.grant);      // scaling per-wave budget
+      money += refund + grant;
+      updateHUD(); renderTowerList(); setInfoDefault();
+      // RESPONSE PHASE: every legit user that got through is a request to serve.
+      const isFinal = waveNum>=WAVES.length;
+      const reqs = pendingRequests.slice(); pendingRequests=[];
+      const finish = ()=>{
+        if(isFinal){ endGame(true); return; }
+        document.getElementById('startBtn').disabled=false;
+        document.getElementById('startBtn').textContent='⭐ Prep Wave '+(waveNum+1);
+        renderPreview();
+        flash('✅ Wave cleared! Board reset — salvaged '+refund+' CPU (50%) + '+grant+' grant. Build a NEW defense for the next attack.');
+      };
+      if(reqs.length){
+        const timeLimit = Math.max(2, Math.round((11 - waveNum)*diff.time));  // stricter each wave & difficulty
+        flash('📨 '+reqs.length+' user request(s) reached your server — respond fast! ('+timeLimit+'s each)');
+        openConsole(reqs, finish, timeLimit);
+      } else {
+        finish();
+      }
+    }
+  }
+  // enemies move
+  for(const en of enemies){
+    let sp=en.speed*(en.slowT>0?0.5:1);
+    if(en.slowT>0) en.slowT-=dt;
+    const path=PATHS[en.pathId||0];
+    const tgt=path[en.wp];
+    const dx=tgt.x-en.x, dy=tgt.y-en.y, d=Math.hypot(dx,dy);
+    const step=sp*dt;
+    if(d<=step){ en.x=tgt.x; en.y=tgt.y; en.wp++;
+      if(en.wp>=path.length){ en.dead=true; en.leaked=true; }
+    } else { en.x+=dx/d*step; en.y+=dy/d*step; }
+  }
+  // leaks (reaching the SRV core)
+  const core=waypts[waypts.length-1];
+  for(const en of enemies){
+    if(!en.leaked) continue;
+    if(en.legit){ // a real user's connection got through — becomes a request to serve
+      pendingRequests.push(nextRequest());
+      texts.push({x:core.x,y:core.y-24,txt:'📥 request queued',color:'#4ade80',t:0,life:0.9,big:true});
+    } else {
+      lives-=(en.type==='ddos'?10:en.type==='overflow'?3:1);
+    }
+  }
+  if(enemies.some(e=>e.leaked)){ updateHUD(); if(lives<=0){ lives=0; updateHUD(); endGame(false); return; } }
+  enemies=enemies.filter(e=>!e.dead);
+  // towers fire
+  for(const tw of towers){
+    tw.cd-=dt;
+    if(tw.cd>0) continue;
+    // target: furthest-along enemy in range
+    let best=null, bestScore=-1;
+    const preciseTower=TOWERS[tw.type].precise;
+    for(const en of enemies){
+      if(preciseTower && en.legit) continue; // recv() validates — never targets real users
+      const d=Math.hypot(en.x-tw.x,en.y-tw.y);
+      if(d<=tw.range){ const score=en.wp*1000 - d; if(score>bestScore){bestScore=score;best=en;} }
+    }
+    if(best){
+      tw.cd=tw.rate;
+      if(tw.aoe>0){
+        projectiles.push({x:tw.x,y:tw.y,tx:best.x,ty:best.y,color:tw.color,aoe:tw.aoe,dmg:tw.dmg,slow:tw.slow,speed:520,ttype:tw.type});
+      } else {
+        projectiles.push({x:tw.x,y:tw.y,target:best,color:tw.color,dmg:tw.dmg,slow:tw.slow,speed:640,ttype:tw.type});
+      }
+    }
+  }
+  // projectiles
+  for(const p of projectiles){
+    let tx,ty;
+    if(p.target && !p.target.dead){ tx=p.target.x; ty=p.target.y; } else { tx=p.tx; ty=p.ty; if(p.target) p.target=null; }
+    if(tx===undefined){ p.dead=true; continue; }
+    const dx=tx-p.x, dy=ty-p.y, d=Math.hypot(dx,dy), step=p.speed*dt;
+    if(d<=step){
+      // hit
+      if(p.aoe){
+        for(const en of enemies){ if(Math.hypot(en.x-tx,en.y-ty)<=p.aoe){ damage(en,p.dmg,p.ttype); if(p.slow)en.slowT=1.2; } }
+        floaters.push({x:tx,y:ty,r:0,max:p.aoe,color:p.color,life:0.25,t:0});
+      } else if(p.target){ damage(p.target,p.dmg,p.ttype); if(p.slow)p.target.slowT=1.2; }
+      p.dead=true;
+    } else { p.x+=dx/d*step; p.y+=dy/d*step; }
+  }
+  projectiles=projectiles.filter(p=>!p.dead);
+  for(const f of floaters){ f.t+=dt; if(f.t>=f.life) f.dead=true; }
+  floaters=floaters.filter(f=>!f.dead);
+  for(const tx of texts){ tx.t+=dt; tx.y-=24*dt; if(tx.t>=tx.life) tx.dead=true; }
+  texts=texts.filter(t=>!t.dead);
+  if(fpFlash>0) fpFlash-=dt;
+  enemies=enemies.filter(e=>!e.dead);
+  updateHUD();
+}
+function damage(en,dmg,ttype){
+  if(en.legit){ // hitting a real user = FALSE POSITIVE (heavily punished)
+    en.hp-=dmg;
+    if(en.hp<=0 && !en.dead){
+      en.dead=true;
+      rep=Math.max(0,rep-30); money=Math.max(0,money-25); lives=Math.max(0,lives-2);
+      fpFlash=0.5;
+      texts.push({x:en.x,y:en.y-en.radius-6,txt:'✗ FALSE POSITIVE  −30 REP',color:'#ef4444',t:0,life:1.4,big:true});
+      updateHUD();
+      if(rep<=0){ endGame(false,'Your filtering was too aggressive. Legitimate users kept getting blocked (false positives) until they abandoned your service. Precision matters: recv() inspects and validates traffic so real users pass — blunt tools like select() (AoE) and close() cause collateral damage.'); return; }
+      if(lives<=0){ endGame(false,'Blocking real users cost you too much server capacity. False positives are expensive: each wrongly-dropped connection is a lost user AND wasted work. Filter precisely with recv() instead of blunt AoE.'); return; }
+    }
+    return;
+  }
+  const E=ENEMIES[en.type];
+  const mult = (E.strong&&E.strong.includes(ttype)) ? 1
+             : (E.ok&&E.ok.includes(ttype)) ? 0.5 : diff.resist;
+  const real = dmg*mult;
+  en.hp -= real;
+  const col = mult>=1 ? '#22c55e' : mult>=0.5 ? '#eab308' : '#8b97a7';
+  const label = mult<0.5 ? ('🛡 '+Math.round(real)) : ('-'+Math.round(real));
+  texts.push({x:en.x, y:en.y-en.radius-6, txt:label, color:col, t:0, life:0.6, big:mult>=1});
+  if(mult<0.5) en.resistFlash=0.15;
+  if(en.hp<=0 && !en.dead){ en.dead=true; money+=en.reward; }
+}
+function endGame(win,reason){
+  gameOver=true; waveActive=false;
+  const ov=document.getElementById('overlay'), m=document.getElementById('modal');
+  m.className='modal '+(win?'win':'lose');
+  document.getElementById('mTitle').textContent = win?'🏆 Server Secured!':(reason&&reason.includes('false')?'👎 Users Abandoned You':'💥 Server Crashed');
+  document.getElementById('mBody').textContent = win
+    ? 'You survived all 8 waves AND served your users correctly. You covered the full socket lifecycle: accept/recv/select/timeout/close to filter attacks, then parsed each HTTP request line and returned the right response (200/404/405/403/400). That is defense in depth across the whole request/response path.'
+    : (reason || 'Too many bad requests reached your listening socket. Tip: layer towers so floods hit select() area damage, overflows meet recv()/close(), and fast scans get chilled by settimeout().');
+  ov.classList.add('show');
+}
+
+/* ---------- RENDER ---------- */
+function render(){
+  ctx.clearRect(0,0,cv.width,cv.height);
+  // grid
+  for(let c=0;c<COLS;c++)for(let r=0;r<ROWS;r++){
+    const onPath=pathCells.has(c+','+r);
+    ctx.fillStyle = onPath ? '#243247' : '#111925';
+    ctx.fillRect(c*TILE+1,r*TILE+1,TILE-2,TILE-2);
+  }
+  // path centerlines
+  ctx.lineWidth=22; ctx.lineJoin='round'; ctx.lineCap='round';
+  const p2active = waveNum>=PATH2_WAVE-1; // active from wave 3 (waveNum is 0-based between waves)
+  // second (threat-only) lane — dimmer until active
+  ctx.strokeStyle = p2active ? '#4a3b2f' : '#242a33';
+  ctx.beginPath(); ctx.moveTo(waypts2[0].x,waypts2[0].y);
+  for(let i=1;i<waypts2.length;i++) ctx.lineTo(waypts2[i].x,waypts2[i].y); ctx.stroke();
+  // main lane
+  ctx.strokeStyle='#3b4a63';
+  ctx.beginPath(); ctx.moveTo(waypts[0].x,waypts[0].y);
+  for(let i=1;i<waypts.length;i++) ctx.lineTo(waypts[i].x,waypts[i].y); ctx.stroke();
+  // core (server)
+  const core=waypts[waypts.length-1];
+  ctx.fillStyle='#22c55e'; ctx.beginPath(); ctx.arc(core.x,core.y,16,0,7); ctx.fill();
+  ctx.fillStyle='#0b0f17'; ctx.font='bold 11px monospace'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('SRV',core.x,core.y);
+  // entries
+  ctx.fillStyle='#f59e0b'; ctx.beginPath(); ctx.arc(waypts[0].x,waypts[0].y,10,0,7); ctx.fill();
+  ctx.fillStyle=p2active?'#f59e0b':'#4b5563'; ctx.beginPath(); ctx.arc(waypts2[0].x,waypts2[0].y,10,0,7); ctx.fill();
+  if(!p2active){ ctx.fillStyle='#94a3b8'; ctx.font='9px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('opens W'+PATH2_WAVE, waypts2[0].x, waypts2[0].y+20); }
+
+  // hover build preview
+  if(selectedType && hoverX>=0){
+    const c=Math.floor(hoverX/TILE), r=Math.floor(hoverY/TILE);
+    if(c>=0&&c<COLS&&r>=0&&r<ROWS){
+      const ok=!pathCells.has(c+','+r)&&!towers.some(t=>t.c===c&&t.r===r)&&money>=TOWERS[selectedType].cost;
+      ctx.fillStyle=ok?'rgba(34,197,94,.25)':'rgba(239,68,68,.25)';
+      ctx.fillRect(c*TILE+2,r*TILE+2,TILE-4,TILE-4);
+      ctx.strokeStyle=TOWERS[selectedType].color+'88'; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.arc(cx(c),cy(r),TOWERS[selectedType].range,0,7); ctx.stroke();
+    }
+  }
+  // range of selected tower
+  if(selectedTower){
+    ctx.strokeStyle=selectedTower.color+'99'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.arc(selectedTower.x,selectedTower.y,selectedTower.range,0,7); ctx.stroke();
+  }
+  // towers
+  for(const tw of towers){
+    ctx.fillStyle=tw.color; ctx.beginPath(); ctx.arc(tw.x,tw.y,15,0,7); ctx.fill();
+    ctx.fillStyle='#0b0f17'; ctx.font='13px sans-serif';
+    ctx.fillText(TOWERS[tw.type].icon,tw.x,tw.y+1);
+    if(tw.level>1){ ctx.fillStyle='#fff'; ctx.font='bold 9px sans-serif'; ctx.fillText(tw.level,tw.x+11,tw.y-10); }
+  }
+  // aoe floaters
+  for(const f of floaters){
+    ctx.strokeStyle=f.color; ctx.globalAlpha=1-f.t/f.life; ctx.lineWidth=3;
+    ctx.beginPath(); ctx.arc(f.x,f.y,f.max*(f.t/f.life),0,7); ctx.stroke(); ctx.globalAlpha=1;
+  }
+  // enemies
+  for(const en of enemies){
+    if(en.resistFlash>0){ en.resistFlash-=0.016; ctx.strokeStyle='#cbd5e1'; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(en.x,en.y,en.radius+4,0,7); ctx.stroke(); }
+    ctx.fillStyle=en.color; ctx.beginPath(); ctx.arc(en.x,en.y,en.radius,0,7); ctx.fill();
+    if(en.legit){ ctx.fillStyle='#0b0f17'; ctx.font='bold 11px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('✓',en.x,en.y+1); }
+    if(en.slowT>0){ ctx.strokeStyle='#eab308'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(en.x,en.y,en.radius+3,0,7); ctx.stroke(); }
+    // hp bar
+    const w=en.radius*2.2, h=4;
+    ctx.fillStyle='#000'; ctx.fillRect(en.x-w/2,en.y-en.radius-8,w,h);
+    ctx.fillStyle='#22c55e'; ctx.fillRect(en.x-w/2,en.y-en.radius-8,w*(en.hp/en.maxhp),h);
+  }
+  // projectiles
+  for(const p of projectiles){
+    ctx.fillStyle=p.color; ctx.beginPath(); ctx.arc(p.x,p.y,p.aoe?5:3.5,0,7); ctx.fill();
+  }
+  // combat text
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  for(const t of texts){
+    ctx.globalAlpha=Math.max(0,1-t.t/t.life);
+    ctx.fillStyle=t.color; ctx.font=(t.big?'bold 13px':'11px')+' monospace';
+    ctx.fillText(t.txt,t.x,t.y);
+  }
+  ctx.globalAlpha=1;
+  // red screen flash on a false positive
+  if(fpFlash>0){
+    ctx.fillStyle='rgba(239,68,68,'+(fpFlash*0.6)+')';
+    ctx.fillRect(0,0,cv.width,cv.height);
+    ctx.strokeStyle='rgba(239,68,68,'+Math.min(1,fpFlash*2)+')'; ctx.lineWidth=8;
+    ctx.strokeRect(0,0,cv.width,cv.height);
+  }
+}
+
+function loop(t){
+  if(!lastT) lastT=t;
+  let dt=(t-lastT)/1000; lastT=t;
+  dt=Math.min(dt,0.05);
+  for(let i=0;i<speed;i++) update(dt);
+  render();
+  requestAnimationFrame(loop);
+}
+reset();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
